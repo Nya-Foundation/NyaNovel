@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1",
+    "tailwindcss": "3"
+  },
+  "scripts": {
+    "build": "bunx tailwindcss -i ./styles.css -o ./dist/styles.css --minify && javascript-obfuscator script.js --output dist/script.js && cp index.html dist/index.html"
+  }
+}

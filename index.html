@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NyaNovel - AI Image Generator</title>
+    <!-- Custom CSS with Tailwind CSS Local Build -->
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Main Scripts (loaded with defer) -->
+    <script src="script.js" defer></script>
+    <!-- Alpine.js (loaded with defer)-->
+    <script src="//unpkg.com/alpinejs" defer></script>
+  </head>
+  <body class="font-sans antialiased transition-colors duration-300" x-data="imageGenerator()" x-init="init()" x-cloak>
+    <!-- Legal Disclaimer Popup -->
+    <div
+      id="legal-disclaimer"
+      class="fixed inset-x-0 bottom-0 z-[60] px-4 py-4 transition-transform duration-500"
+      x-data="{ show: !$store.app.disclaimerAccepted }"
+      x-show="show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full"
+      x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      x-cloak
+    >
+      <div class="container mx-auto">
+        <div class="backdrop-blur-md bg-[var(--bg-card)]/95 border border-[var(--border-secondary)] rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex items-start space-x-4">
+              <div class="bg-[var(--color-warning)]/20 p-3 rounded-full shadow-inner border border-[var(--color-warning)]/30 animate-pulse-slow">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-lg font-bold text-primary-950 dark:text-primary-50 flex items-center">
+                  <span>Legal Disclaimer</span>
+                  <span class="ml-2 px-2 py-0.5 text-xs bg-[var(--color-warning)]/20 text-[var(--color-warning)] rounded-full border border-[var(--color-warning)]/30">Important</span>
+                </h3>
+                <p class="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">
+                  NyaNovel is provided strictly for research purposes only. Any commercial use and abuse are not permitted and may violate NovelAI's Terms of Service. Users are solely responsible for ensuring their usage complies with all
+                  applicable laws and NovelAI's terms. The creators of NyaNovel disclaim all liability for any misuse or violations committed by users.
+                </p>
+              </div>
+            </div>
+            <div class="flex space-x-3">
+              <a
+                href="https://novelai.net/terms"
+                target="_blank"
+                class="text-sm font-medium text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] dark:hover:text-[var(--color-primary-300)] underline underline-offset-2"
+                >NovelAI Terms</a
+              >
+              <button
+                @click="show = false; localStorage.setItem('disclaimerAccepted', 'true'); $store.app.disclaimerAccepted = true;"
+                class="px-4 py-3 bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] hover:from-[var(--color-primary-600)] hover:to-[var(--color-accent-600)] text-white font-medium rounded-lg text-sm whitespace-nowrap shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-200 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Server Config Modal -->
+    <div
+      class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity backdrop-blur-sm"
+      x-show="showServerModal"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    >
+      <div class="p-6 rounded-2xl max-w-md w-full backdrop-blur-md bg-[var(--bg-card)] border border-[var(--border-secondary)] shadow-[var(--shadow-xl)]" @click.away="token ? showServerModal = false : showServerModal = true">
+        <div class="relative flex items-center justify-center mb-8">
+          <div class="absolute -top-12 bg-gradient-to-r from-[var(--color-primary-400)] to-[var(--color-accent-400)] p-4 rounded-2xl shadow-lg shadow-[var(--color-primary-400)]/30 dark:shadow-[var(--color-primary-700)]/40">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[var(--text-on-accent)]" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fill-rule="evenodd"
+                d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05A6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+        </div>
+        <h2 class="text-2xl font-bold mb-2 text-center text-primary-950 dark:text-primary-50">Server Configuration</h2>
+        <p class="mb-6 text-[var(--text-secondary)] text-center">Connect NyaNovel to your NovelAI instance to start creating amazing images.</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="server-url">Server URL</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
+              <input
+                id="server-url"
+                type="url"
+                class="w-full pl-10 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                placeholder="https://image.novelai.net"
+                x-model="serverUrl"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="token">API Token</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </span>
+              <input
+                id="token"
+                type="password"
+                class="w-full pl-10 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                placeholder="Enter your NovelAI token"
+                x-model="token"
+              />
+            </div>
+          </div>
+
+          <div class="mt-4" x-data="{ showAdvancedSettings: false }">
+            <button
+              @click="showAdvancedSettings = !showAdvancedSettings"
+              type="button"
+              class="flex items-center w-full justify-between text-left text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium py-2 px-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+            >
+              <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                </svg>
+                <span>Advanced Connection Settings</span>
+              </div>
+              <svg :class="{'rotate-180': showAdvancedSettings}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <!-- Advanced Settings Section -->
+            <div x-show="showAdvancedSettings" x-cloak class="mt-3">
+              <div class="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                <p class="text-xs mb-4 text-[var(--text-tertiary)]">Configure retry behavior for API requests to ensure stable connection with NovelAI servers.</p>
+
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="max-retries">Max Retries</label>
+                    <div class="relative flex items-center">
+                      <div class="absolute left-0 pl-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </div>
+                      <input
+                        id="max-retries"
+                        type="number"
+                        min="0"
+                        max="10"
+                        step="1"
+                        class="w-full pl-10 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        placeholder="e.g., 3"
+                        x-model.number="retryConfig.maxRetries"
+                      />
+                    </div>
+                    <p class="text-xs mt-1 text-[var(--text-tertiary)]">Number of times to retry failed requests (3-5 recommended)</p>
+                  </div>
+
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="base-delay">Base Delay (ms)</label>
+                    <div class="relative flex items-center">
+                      <div class="absolute left-0 pl-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        id="base-delay"
+                        type="number"
+                        min="0"
+                        step="100"
+                        class="w-full pl-10 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        placeholder="e.g., 2000"
+                        x-model.number="retryConfig.baseDelay"
+                      />
+                    </div>
+                    <p class="text-xs mt-1 text-[var(--text-tertiary)]">Time in milliseconds between retry attempts (1000-3000 recommended)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connect button -->
+          <template x-if="token">
+            <div class="mt-4 py-2 px-3 flex items-center rounded-lg bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm font-medium">Connected</span>
+            </div>
+          </template>
+
+          <div class="mt-6">
+            <button
+              class="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] hover:from-[var(--color-primary-600)] hover:to-[var(--color-accent-600)] text-[var(--text-on-primary)] font-medium rounded-xl shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-[var(--transition-normal)]"
+              @click="saveServerConfig"
+            >
+              <div class="flex items-center justify-center w-full">
+                <span x-text="token ? 'Update Connection' : 'Connect to NovelAI'"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Director Tools Overlay -->
+    <div
+      class="fixed inset-0 bg-black/80 flex items-center justify-center z-40 transition-opacity backdrop-blur-md"
+      x-show="showDirectorTools"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    >
+      <div class="p-8 rounded-2xl shadow-2xl max-w-7xl w-full h-[90vh] flex flex-col bg-[var(--bg-card)] border border-[var(--border-secondary)]">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-2xl font-bold text-primary-950 dark:text-primary-50">Director Tools</h2>
+
+          <button @click="showDirectorTools = false" class="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-auto mb-6">
+          <div class="flex flex-col h-full">
+            <h3 class="text-lg font-semibold mb-3 text-primary-950 dark:text-primary-50">Original</h3>
+            <div
+              class="flex-grow rounded-xl flex items-center justify-center image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] border border-[var(--border-secondary)]"
+            >
+              <img :src="selectedImage?.dataUrl" alt="Original image" class="max-h-full max-w-full object-contain drop-shadow-md" />
+            </div>
+          </div>
+
+          <div class="flex flex-col h-full">
+            <h3 class="text-lg font-semibold mb-3 text-primary-950 dark:text-primary-50">Result</h3>
+            <div
+              class="flex-grow rounded-xl flex items-center justify-center relative image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] border border-[var(--border-secondary)]"
+            >
+              <div x-show="isDirectorProcessing" class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl backdrop-blur-sm">
+                <div class="rounded-full h-16 w-16 border-t-2 border-b-2 animate-gradient-spin"></div>
+              </div>
+              <img x-show="processedImage" :src="processedImage" alt="Processed image" class="max-h-full max-w-full object-contain drop-shadow-md" />
+              <div x-show="!processedImage && !isDirectorProcessing" class="text-[var(--text-tertiary)] text-center p-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <p>Your masterpiece awaits transformation...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-0 p-6 rounded-xl backdrop-blur-sm bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+          <h3 class="text-xl font-semibold mb-6 text-primary-950 dark:text-primary-50">Choose a Tool</h3>
+          <div class="flex flex-wrap gap-4">
+            <button @click="applyDirectorTool('lineArt'); showEmotionControls = false; showColorizeControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Line Art
+            </button>
+            <button @click="applyDirectorTool('sketch'); showEmotionControls = false; showColorizeControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Sketch
+            </button>
+            <button @click="applyDirectorTool('backgroundRemoval'); showEmotionControls = false; showColorizeControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
+              </svg>
+              Remove Background
+            </button>
+            <button @click="applyDirectorTool('declutter'); showEmotionControls = false; showColorizeControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 3v4M3 5h4M6.5 17.5L5 21l3.5-1.5L10 21l1.5-3.5L13 21l3.5-1.5L18 21l-1.5-3.5M17 3v4M19 5h-4M10 3c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zM3 10c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm14 0c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z"
+                />
+              </svg>
+              Declutter
+            </button>
+            <button @click="showColorizeControls = !showColorizeControls; showEmotionControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                />
+              </svg>
+              Colorize
+            </button>
+            <button @click="showEmotionControls = !showEmotionControls; showColorizeControls = false" class="tool-button px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Change Emotion
+            </button>
+          </div>
+
+          <!-- Emotion controls -->
+          <div x-show="showEmotionControls" x-transition class="mt-6 p-6 rounded-xl shadow backdrop-blur-sm bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Target Emotion</label>
+                <select
+                  x-model="emotionOptions.emotion"
+                  class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                >
+                  <option value="neutral">Neutral</option>
+                  <option value="happy">Happy</option>
+                  <option value="sad">Sad</option>
+                  <option value="angry">Angry</option>
+                  <option value="scared">Scared</option>
+                  <option value="surprised">Surprised</option>
+                  <option value="tired">Tired</option>
+                  <option value="excited">Excited</option>
+                  <option value="nervous">Nervous</option>
+                  <option value="thinking">Thinking</option>
+                  <option value="confused">Confused</option>
+                  <option value="shy">Shy</option>
+                  <option value="disgusted">Disgusted</option>
+                  <option value="smug">Smug</option>
+                  <option value="bored">Bored</option>
+                  <option value="laughing">Laughing</option>
+                  <option value="irritated">Irritated</option>
+                  <option value="aroused">Aroused</option>
+                  <option value="embarrassed">Embarrassed</option>
+                  <option value="worried">Worried</option>
+                  <option value="love">Love</option>
+                  <option value="determined">Determined</option>
+                  <option value="hurt">Hurt</option>
+                  <option value="playful">Playful</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Additional Prompt (Optional)</label>
+                <input
+                  type="text"
+                  x-model="emotionOptions.prompt"
+                  placeholder="e.g., looking at viewer"
+                  class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Emotion Level</label>
+                <select
+                  x-model.number="emotionOptions.emotionLevel"
+                  class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                >
+                  <option value="0">Normal</option>
+                  <option value="1">Slightly Weak</option>
+                  <option value="2">Weak</option>
+                  <option value="3">Even Weaker</option>
+                  <option value="4">Very Weak</option>
+                  <option value="5">Weakest</option>
+                </select>
+              </div>
+            </div>
+            <button
+              @click="applyEmotionChange"
+              class="mt-6 px-5 py-2.5 bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] hover:from-[var(--color-primary-600)] hover:to-[var(--color-accent-600)] text-[var(--text-on-primary)] font-medium rounded-xl shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-[var(--transition-normal)] flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Apply Emotion Change
+            </button>
+          </div>
+
+          <!-- Colorize controls -->
+          <div x-show="showColorizeControls" x-transition class="mt-6 p-6 rounded-xl shadow backdrop-blur-sm bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium" for="colorizePrompt">Additional Prompt (Optional)</label>
+                <input
+                  id="colorizePrompt"
+                  type="text"
+                  x-model="colorizeOptions.prompt"
+                  placeholder="e.g., vibrant colors, fantasy style"
+                  class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                />
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm text-[var(--text-secondary)] font-medium" for="colorizeDefry">Defry Level</label>
+                  <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="colorizeOptions.defry"></span>
+                </div>
+                <input id="colorizeDefry" type="range" min="0" max="5" step="1" x-model.number="colorizeOptions.defry" class="w-full" />
+              </div>
+            </div>
+            <button
+              @click="applyColorizeTool"
+              class="mt-6 px-5 py-2.5 bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] hover:from-[var(--color-primary-600)] hover:to-[var(--color-accent-600)] text-[var(--text-on-primary)] font-medium rounded-xl shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-[var(--transition-normal)] flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                />
+              </svg>
+              Apply Colorize
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-between">
+          <button
+            @click="showDirectorTools = false"
+            class="px-6 py-3 bg-[var(--color-secondary-200)] hover:bg-[var(--color-secondary-300)] text-[var(--text-primary)] dark:bg-[var(--color-neutral-700)] dark:hover:bg-[var(--color-neutral-600)] dark:text-[var(--text-secondary)] font-medium rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            @click="saveProcessedImage"
+            :disabled="!processedImage"
+            class="px-6 py-3 bg-gradient-to-r from-[var(--color-success)] to-[var(--color-info)] hover:from-[var(--color-success-hover)] hover:to-[var(--color-info-hover)] disabled:from-[var(--color-neutral-400)] disabled:to-[var(--color-neutral-500)] disabled:cursor-not-allowed text-[var(--text-on-primary)] font-medium rounded-xl shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-[var(--transition-normal)] flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            Save Result
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="min-h-screen flex flex-col">
+      <!-- Header -->
+      <header class="shadow-sm backdrop-blur-md py-2 px-4 sticky top-0 z-30 border-b bg-[var(--bg-backdrop)] border-[var(--border-secondary)]">
+        <div class="container mx-auto flex justify-between items-center">
+          <div class="flex items-center">
+            <div class="bg-gradient-to-r from-[var(--color-primary-400)] to-[var(--color-accent-400)] p-1.5 rounded-lg mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[var(--text-on-accent)]" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-primary-950 dark:text-primary-50">NyaNovel</h1>
+          </div>
+          <div class="flex gap-3">
+            <button @click="toggleDarkMode" class="p-2 rounded-full hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] transition-colors tooltip">
+              <svg x-show="!darkMode" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+              <svg x-show="darkMode" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+              <span class="tooltiptext">Toggle Dark Mode</span>
+            </button>
+            <button @click="showServerModal = true" class="p-2 rounded-full hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] transition-colors tooltip">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[var(--text-secondary)] dark:text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span class="tooltiptext">Server Settings</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <main class="flex-grow py-4 px-0">
+        <div class="h-full flex flex-col lg:flex-row">
+          <!-- Left Panel - Settings (collapsible) -->
+          <div class="settings-panel" :class="{'settings-panel-collapsed': settingsCollapsed}">
+            <div class="settings-toggle" @click="settingsCollapsed = !settingsCollapsed">
+              <svg x-show="!settingsCollapsed" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+              <svg x-show="settingsCollapsed" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </div>
+
+            <div class="settings-content" x-show="!settingsCollapsed">
+              <h2 class="text-xl font-bold mb-4 flex items-center text-primary-950 dark:text-primary-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Generation Settings
+              </h2>
+
+              <template x-if="!token">
+                <div class="p-4 mb-4 rounded-xl backdrop-blur-sm bg-[var(--color-warning)]/10 text-[var(--color-warning)] border border-[var(--color-warning)]/20">
+                  <div class="flex items-start">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p class="font-medium mb-1">API Token Required</p>
+                      <p class="text-sm">Please set up your server and token first.</p>
+                      <button @click="showServerModal = true" class="mt-2 text-[var(--text-link)] hover:underline font-medium text-sm">Configure now</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <div class="settings-tabs">
+                <button @click="activeSettingsTab = 'basic'" :class="{'settings-tab-active': activeSettingsTab === 'basic'}" class="settings-tab">Basic</button>
+                <button @click="activeSettingsTab = 'advanced'" :class="{'settings-tab-active': activeSettingsTab === 'advanced'}" class="settings-tab">Advanced</button>
+                <button @click="activeSettingsTab = 'characters'" :class="{'settings-tab-active': activeSettingsTab === 'characters'}" class="settings-tab">Characters</button>
+              </div>
+
+              <div class="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2 mt-4">
+                <!-- Basic Settings Tab -->
+                <div x-show="activeSettingsTab === 'basic'" class="space-y-4">
+                  <!-- Prompt Section -->
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="prompt">Prompt</label>
+                    <textarea
+                      id="prompt"
+                      rows="3"
+                      x-model="generationSettings.prompt"
+                      @input="autoResizeTextarea($event.target)"
+                      class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                      placeholder="1girl, blue hair, cute, anime style"
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negativePrompt">Undesired Content</label>
+                    <textarea
+                      id="negativePrompt"
+                      rows="2"
+                      x-model="generationSettings.negativePrompt"
+                      @input="autoResizeTextarea($event.target)"
+                      class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                      placeholder="nsfw, lowres, bad anatomy, bad hands"
+                    ></textarea>
+                  </div>
+
+                  <!-- Quality Tags & UC Preset -->
+                  <div class="space-y-3 mt-3 p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                    <div class="flex items-center">
+                      <input id="qualityTagsBasic" type="checkbox" x-model="generationSettings.qualityToggle" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
+                      <label for="qualityTagsBasic" class="ml-2 text-sm text-[var(--text-secondary)]"> Apply Quality Tags </label>
+                    </div>
+                    <div>
+                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="ucPresetBasic">Undesired Content Preset</label>
+                      <div class="relative">
+                        <select
+                          id="ucPresetBasic"
+                          x-model.number="generationSettings.ucPreset"
+                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        >
+                          <option value="0">Heavy</option>
+                          <option value="1">Light</option>
+                          <option value="2">None</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Model & Resolution -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="model">Model</label>
+                      <div class="relative">
+                        <select
+                          id="model"
+                          x-model="generationSettings.model"
+                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        >
+                          <option value="nai-diffusion-4-5-curated">✨NAI Diffusion V4.5 Curated</option>
+                          <option value="nai-diffusion-4-full" selected>✨NAI Diffusion V4 Full</option>
+                          <option value="nai-diffusion-4-curated-preview">NAI Diffusion V4 Curated</option>
+                          <option value="nai-diffusion-3">NAI Diffusion Anime V3</option>
+                          <option value="nai-diffusion-furry">NAI Diffusion Furry V3</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="resolution">Resolution</label>
+                      <div class="relative">
+                        <select
+                          id="resolution"
+                          x-model="generationSettings.resPreset"
+                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        >
+                          <option value="normal_portrait">✨Normal Portrait (832x1216)</option>
+                          <option value="normal_landscape">✨Normal Landscape (1216x832)</option>
+                          <option value="normal_square">✨Normal Square (1024x1024)</option>
+                          <option value="small_portrait">Small Portrait (512x768)</option>
+                          <option value="small_landscape">Small Landscape (768x512)</option>
+                          <option value="small_square">Small Square (640x640)</option>
+                          <option value="large_portrait">Large Portrait (1024x1536)</option>
+                          <option value="large_landscape">Large Landscape (1536x1024)</option>
+                          <option value="large_square">Large Square (1472x1472)</option>
+                          <option value="wallpaper_portrait">Wallpaper Portrait (1088x1920)</option>
+                          <option value="wallpaper_landscape">Wallpaper Landscape (1920x1088)</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Basic Settings -->
+                  <div>
+                    <div class="flex justify-between items-center mb-2">
+                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="steps">Steps</label>
+                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.steps"></span>
+                    </div>
+                    <input id="steps" type="range" min="10" max="50" x-model.number="generationSettings.steps" class="w-full" />
+                  </div>
+
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="seed">Seed (-1 for random)</label>
+                    <div class="relative w-full flex items-center">
+                      <div class="absolute left-2 seed-icon-container pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        id="seed"
+                        type="number"
+                        min="-1"
+                        x-model.number="generationSettings.seed"
+                        class="w-full pl-8 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Batch Size Buttons -->
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium">Batch Size</label>
+                    <div class="flex space-x-2">
+                      <button
+                        @click="generationSettings.nSamples = 1"
+                        :class="{
+                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 1,
+                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 1
+                            }"
+                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
+                      >
+                        1
+                      </button>
+                      <button
+                        @click="generationSettings.nSamples = 2"
+                        :class="{
+                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 2,
+                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 2
+                            }"
+                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
+                      >
+                        2
+                      </button>
+                      <button
+                        @click="generationSettings.nSamples = 3"
+                        :class="{
+                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 3,
+                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 3
+                            }"
+                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
+                      >
+                        3
+                      </button>
+                      <button
+                        @click="generationSettings.nSamples = 4"
+                        :class="{
+                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 4,
+                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 4
+                            }"
+                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
+                      >
+                        4
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Sampler -->
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="samplers">Sampler</label>
+                    <div class="relative">
+                      <select
+                        id="samplers"
+                        x-model="generationSettings.sampler"
+                        class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                      >
+                        <option value="k_euler">Euler</option>
+                        <option value="k_euler_ancestral">Euler Ancestral</option>
+                        <option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
+                        <option value="k_dpmpp_2m">DPM++ 2M</option>
+                        <option value="k_dpmpp_sde">DPM++ SDE</option>
+                        <option value="ddim">DDIM</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Advanced Settings Tab -->
+                <div x-show="activeSettingsTab === 'advanced'" class="space-y-5">
+                  <!-- Increased space-y -->
+                  <!-- Prompt Guidance (formerly CFG Scale) -->
+                  <div>
+                    <div class="flex justify-between items-center mb-2">
+                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="scale">Prompt Guidance</label>
+                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.scale"></span>
+                    </div>
+                    <input id="scale" type="range" min="1" max="15" step="0.5" x-model.number="generationSettings.scale" class="w-full" />
+                  </div>
+
+                  <!-- Prompt Guidance Rescale (formerly CFG Rescale) -->
+                  <div>
+                    <div class="flex justify-between items-center mb-2">
+                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="cfgRescale">Prompt Guidance Rescale</label>
+                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.cfgRescale"></span>
+                    </div>
+                    <input id="cfgRescale" type="range" min="0" max="1" step="0.05" x-model.number="generationSettings.cfgRescale" class="w-full" />
+                  </div>
+
+                  <!-- Noise Schedule -->
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="noiseSchedule">Noise Schedule</label>
+                    <div class="relative">
+                      <select
+                        id="noiseSchedule"
+                        x-model="generationSettings.noiseSchedule"
+                        class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                      >
+                        <option value="native">Native</option>
+                        <option value="karras" selected>Karras</option>
+                        <option value="exponential">Exponential</option>
+                        <option value="polyexponential">Polyexponential</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Checkboxes -->
+                  <div class="space-y-3 p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                    <!-- Dynamic Thresholding -->
+                    <div class="flex items-center">
+                      <input
+                        id="dynamicThresholding"
+                        type="checkbox"
+                        x-model="generationSettings.dynamicThresholding"
+                        class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]"
+                      />
+                      <label for="dynamicThresholding" class="ml-2 text-sm text-[var(--text-secondary)]"> Dynamic Thresholding </label>
+                    </div>
+
+                    <!-- Quality Toggle -->
+                    <div class="flex items-center">
+                      <input id="qualityToggle" type="checkbox" x-model="generationSettings.qualityToggle" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
+                      <label for="qualityToggle" class="ml-2 text-sm text-[var(--text-secondary)]"> Quality Toggle </label>
+                    </div>
+
+                    <!-- Auto SMEA -->
+                    <div class="flex items-center">
+                      <input id="autoSmea" type="checkbox" x-model="generationSettings.autoSmea" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
+                      <label for="autoSmea" class="ml-2 text-sm text-[var(--text-secondary)]"> Auto SMEA </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Characters Tab -->
+                <div x-show="activeSettingsTab === 'characters'" class="space-y-4">
+                  <div class="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                    <h3 class="text-md font-semibold mb-3 text-primary-950 dark:text-primary-50">Character Fine-tuning</h3>
+                    <p class="text-xs text-[var(--text-tertiary)] mb-3">Define specific prompts for individual characters. Positioning options appear when you add more than one character.</p>
+
+                    <template x-for="(character, index) in generationSettings.characterPrompts" :key="index">
+                      <div class="mb-4 p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-input)] shadow-lg">
+                        <div class="flex justify-between items-start mb-3">
+                          <span class="text-md font-semibold text-[var(--text-primary)]" x-text="'Character ' + (index + 1)"></span>
+                          <div class="flex items-center space-x-3">
+                            <div class="flex items-center">
+                              <label :for="'charEnabled' + index" class="text-xs text-[var(--text-tertiary)] mr-2 mb-0">Enabled</label>
+                              <input
+                                :id="'charEnabled' + index"
+                                type="checkbox"
+                                x-model="character.enabled"
+                                class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)] cursor-pointer"
+                              />
+                            </div>
+                            <button @click="removeCharacter(index)" class="p-1.5 text-red-500 hover:text-red-700 rounded-full hover:bg-red-500/10 dark:hover:bg-red-400/20 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+                          <!-- Left Column: Prompts - Changed from md:col-span-2 to md:col-span-3 to use full width -->
+                          <div class="md:col-span-3 space-y-3">
+                            <!-- Prompt Section -->
+                            <div>
+                              <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="prompt">Prompt</label>
+                              <textarea
+                                id="prompt"
+                                rows="3"
+                                x-model="generationSettings.prompt"
+                                @input="autoResizeTextarea($event.target)"
+                                class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] min-h-[calc(20vh)] md:min-h-[160px]"
+                                placeholder="1girl, blue hair, cute, anime style"
+                              ></textarea>
+                            </div>
+
+                            <div>
+                              <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negativePrompt">Undesired Content</label>
+                              <textarea
+                                id="negativePrompt"
+                                rows="2"
+                                x-model="generationSettings.negativePrompt"
+                                @input="autoResizeTextarea($event.target)"
+                                class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] min-h-[calc(15vh)] md:min-h-[120px]"
+                                placeholder="nsfw, lowres, bad anatomy, bad hands"
+                              ></textarea>
+                            </div>
+                          </div>
+
+                          <!-- Right Column: Controls - Move it below the textareas -->
+                          <div class="md:col-span-3 space-y-4">
+                            <div x-show="generationSettings.characterPrompts.length > 1" class="pt-1 space-y-3">
+                              <p class="text-sm text-[var(--text-secondary)] font-medium">Positioning (0.1 - 0.9)</p>
+                              <div class="space-y-3 md:flex md:space-x-4 md:space-y-0">
+                                <div class="md:flex-1">
+                                  <label :for="'charCenterX' + index" class="block text-xs text-[var(--text-tertiary)] mb-1">Center X</label>
+                                  <input
+                                    :id="'charCenterX' + index"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.1"
+                                    max="0.9"
+                                    x-model.number="character.center.x"
+                                    class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                                  />
+                                </div>
+                                <div class="md:flex-1">
+                                  <label :for="'charCenterY' + index" class="block text-xs text-[var(--text-tertiary)] mb-1">Center Y</label>
+                                  <input
+                                    :id="'charCenterY' + index"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.1"
+                                    max="0.9"
+                                    x-model.number="character.center.y"
+                                    class="w-full px-3 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+
+                    <button
+                      @click="addCharacter"
+                      class="w-full mt-2 py-3 px-4 bg-[var(--color-primary-100)] hover:bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)]/40 dark:hover:bg-[var(--color-primary-700)]/50 text-[var(--color-primary-700)] dark:text-[var(--color-primary-200)] font-semibold rounded-xl transition-all duration-200 flex items-center justify-center border-2 border-dashed border-[var(--color-primary-300)] dark:border-[var(--color-primary-600)] hover:border-solid hover:border-[var(--color-primary-400)] dark:hover:border-[var(--color-primary-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-400)]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Character
+                    </button>
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                    <h3 class="text-md font-semibold mb-3 text-primary-950 dark:text-primary-50">Vibe Transfer</h3>
+                    <p class="text-xs text-[var(--text-tertiary)] mb-3">Upload a reference image to transfer its style to your generated images.</p>
+
+                    <div class="flex items-center justify-center w-full">
+                      <label
+                        for="vibe-transfer-file"
+                        class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-[var(--bg-input)]/50 dark:bg-[var(--bg-input)]/30 border-[var(--border-input)] hover:bg-[var(--color-neutral-50)] dark:hover:bg-[var(--color-neutral-700)]/50"
+                      >
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                          <template x-if="!vibeTransferImage">
+                            <div class="text-center">
+                              <svg class="w-8 h-8 mb-3 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                              </svg>
+                              <p class="mb-1 text-sm text-[var(--text-tertiary)]">Click to upload or drag and drop</p>
+                              <p class="text-xs text-[var(--text-tertiary)]">PNG, JPG or WEBP</p>
+                            </div>
+                          </template>
+                          <template x-if="vibeTransferImage">
+                            <div class="relative w-full h-full flex items-center justify-center">
+                              <img :src="vibeTransferImage" class="max-h-28 max-w-full object-contain" />
+                              <button @click.stop="clearVibeTransfer" class="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </template>
+                        </div>
+                        <input id="vibe-transfer-file" type="file" class="hidden" @change="handleVibeTransferUpload" accept="image/*" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Generate Button -->
+              <button
+                @click="generateImage"
+                :disabled="isGenerating || !token"
+                class="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] hover:from-[var(--color-primary-600)] hover:to-[var(--color-accent-600)] disabled:from-[var(--color-neutral-400)] disabled:to-[var(--color-neutral-500)] disabled:cursor-not-allowed text-[var(--text-on-primary)] font-medium rounded-xl shadow-[var(--shadow-button)] hover:shadow-[var(--shadow-button-hover)] transition-all duration-[var(--transition-normal)] mt-4"
+              >
+                <span x-show="!isGenerating" class="flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Generate Image
+                </span>
+                <span x-show="isGenerating" class="flex items-center justify-center">
+                  <svg class="animate-gradient-spin -ml-1 mr-2 h-5 w-5 text-[var(--text-on-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Middle - Main Image Display (expanded) -->
+          <div class="main-content-area">
+            <!-- Main Image Display -->
+            <div class="rounded-xl shadow-[var(--shadow-lg)] backdrop-blur-md p-4 flex flex-col card-hover flex-grow bg-[var(--bg-card)]">
+              <div class="flex justify-between items-center mb-5">
+                <h2 class="text-xl font-bold flex items-center text-primary-950 dark:text-primary-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Image Preview
+                </h2>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center space-x-2">
+                  <template x-if="selectedImage">
+                    <div class="flex space-x-2">
+                      <button @click="downloadImage" class="action-button bg-[var(--color-primary-500)] hover:bg-[var(--color-primary-600)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download
+                      </button>
+                      <button @click="showDirectorTools = true" class="action-button bg-[var(--color-secondary-500)] hover:bg-[var(--color-secondary-600)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        Edit
+                      </button>
+                      <button @click="deleteCurrentImage" class="action-button bg-[var(--color-error)] hover:bg-[var(--color-error)]/80">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div
+                class="flex-grow rounded-xl flex items-center justify-center relative image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] min-h-[85vh] border border-[var(--border-secondary)]"
+              >
+                <div x-show="isGenerating" class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl">
+                  <div class="flex flex-col items-center">
+                    <div class="animate-gradient-spin rounded-full h-16 w-16 border-t-2 border-b-2 mb-4"></div>
+                    <p class="text-[var(--text-on-primary)] font-medium">Generating your image...</p>
+                  </div>
+                </div>
+
+                <template x-if="!selectedImage && !isGenerating">
+                  <div class="text-center p-8 text-[var(--text-tertiary)] max-w-md backdrop-blur-sm bg-[var(--bg-tertiary)]/50 rounded-2xl shadow-sm border border-[var(--border-secondary)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto mb-4 text-[var(--text-tertiary)] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p class="mb-2 font-medium text-lg">Ready to create anime magic</p>
+                    <p class="text-sm text-[var(--text-tertiary)]">Enter a prompt on the left panel to create your anime-style image</p>
+                  </div>
+                </template>
+
+                <template x-if="selectedImage && !isGenerating">
+                  <img :src="selectedImage.dataUrl" alt="Generated image" class="max-h-full max-w-full object-contain rounded-lg pop-in drop-shadow-lg" />
+                </template>
+              </div>
+
+              <!-- Image metadata section -->
+              <div x-show="selectedImage" class="mt-4 p-4 rounded-xl text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-secondary)]">
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                      />
+                    </svg>
+                    <span class="font-medium">Model:</span>
+                    <span x-text="selectedImage?.settings?.model || 'Unknown'" class="ml-1"></span>
+                  </div>
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                      />
+                    </svg>
+                    <span class="font-medium">Seed:</span>
+                    <span x-text="selectedImage?.settings?.seed || 'Unknown'" class="ml-1 font-mono"></span>
+                  </div>
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-medium">Created:</span>
+                    <span x-text="selectedImage?.timestamp ? new Date(selectedImage.timestamp).toLocaleString() : 'Unknown'" class="ml-1"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gallery at the right edge (collapsible) -->
+            <div class="gallery-panel" :class="{'gallery-panel-expanded': galleryExpanded}" @mouseenter="galleryExpanded = true" @mouseleave="galleryExpanded = false">
+              <div class="gallery-toggle" @click="galleryExpanded = !galleryExpanded">
+                <svg x-show="galleryExpanded" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+                <svg x-show="!galleryExpanded" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </div>
+
+              <div class="gallery-content">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-lg font-bold flex items-center text-primary-950 dark:text-primary-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Gallery
+                  </h3>
+
+                  <button @click="clearAllImages" x-show="images.length > 0" class="text-red-500 hover:text-red-600 text-sm font-medium transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear
+                  </button>
+                </div>
+
+                <div class="space-y-3">
+                  <template x-if="images.length === 0">
+                    <div class="flex items-center justify-center w-full text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-200/50 dark:border-slate-600/50">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <p class="text-sm">No images yet</p>
+                    </div>
+                  </template>
+
+                  <template x-for="(image, index) in images" :key="image.id">
+                    <div class="relative group cursor-pointer" @click="selectImage(index)" :class="{'selected-image-glow z-10': selectedImageIndex === index}">
+                      <img
+                        :src="image.dataUrl"
+                        :alt="`Generated image ${index + 1}`"
+                        class="w-full h-auto object-cover rounded-xl transition-all border-2 border-transparent hover:border-primary-400 dark:hover:border-primary-500"
+                        :class="{'border-primary-500 dark:border-primary-400': selectedImageIndex === index}"
+                      />
+                      <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="bg-[var(--bg-backdrop)]/90 shadow-sm backdrop-blur-md py-4 px-4 mt-auto border-t border-[var(--border-secondary)]">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div class="flex items-center">
+            <div class="bg-gradient-to-r from-[var(--color-primary-400)] to-[var(--color-accent-400)] p-1.5 rounded-lg mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-on-accent)]" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05A6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-[var(--text-primary)]">NyaNovel</h3>
+              <p class="text-xs text-[var(--text-tertiary)]">AI Image Generator</p>
+            </div>
+          </div>
+
+          <div class="text-center text-[var(--text-secondary)] text-sm">
+            <p>Made with <span class="text-[var(--color-accent-500)]">♥</span> using Tailwind CSS and Alpine.js</p>
+            <div class="text-xs mt-1 flex items-center justify-center flex-wrap gap-x-2">
+              <span>Powered by</span>
+              <a
+                href="https://novelai.net"
+                target="_blank"
+                class="text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] dark:hover:text-[var(--color-primary-300)] underline underline-offset-2"
+                >NovelAI</a
+              >
+              <span class="hidden sm:inline">|</span>
+              <a
+                href="https://github.com/Nya-Foundation/NekoAI-JS"
+                target="_blank"
+                class="text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] dark:hover:text-[var(--color-primary-300)] underline underline-offset-2"
+                >NekoAI-JS</a
+              >
+              <span class="hidden sm:inline">|</span>
+              <a
+                href="https://github.com/Nya-Foundation/NyaProxy"
+                target="_blank"
+                class="text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] dark:hover:text-[var(--color-primary-300)] underline underline-offset-2"
+                >NyaProxy</a
+              >
+            </div>
+          </div>
+
+          <div class="flex flex-col items-end">
+            <a href="https://github.com/Nya-Foundation" target="_blank" class="flex items-center text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M10 0C4.477 0 0 4.477 0 10c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.22.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V19c0 .27.16.59.67.5C17.14 18.16 20 14.42 20 10A10 10 0 0010 0z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Nya Foundation
+            </a>
+            <p class="text-xs mt-1 text-[var(--text-tertiary)]">© 2025 Research Purpose Only</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
