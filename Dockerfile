@@ -1,5 +1,5 @@
 # Build stage
-FROM alpine:latest AS builder
+FROM node:lts-alpine3.20 AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Final stage
-FROM nginx:alpine
+FROM nginx:stable-alpine-slim
 
 
 # Add image metadata
