@@ -135,10 +135,10 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         labels: |
-          org.opencontainers.image.title=NyaProxy
-          org.opencontainers.image.description=A lightweight, flexible API proxy with dynamic token rotation
-          org.opencontainers.image.url=https://github.com/Nya-Foundation/nyaproxy
-          org.opencontainers.image.source=https://github.com/Nya-Foundation/nyaproxy
+          org.opencontainers.image.title=NyaNovel
+          org.opencontainers.image.description=A front-end only client for NovelAI's image generation, built with TailwindCSS, and Alpine.js.
+          org.opencontainers.image.url=https://github.com/Nya-Foundation/NyaNovel
+          org.opencontainers.image.source=https://github.com/Nya-Foundation/NyaNovel
           org.opencontainers.image.version=latest
           org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           org.opencontainers.image.revision=${{ github.sha }}

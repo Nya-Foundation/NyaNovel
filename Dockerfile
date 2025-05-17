@@ -4,14 +4,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy only package files and install dependencies
-COPY package.json bun.lock ./
-RUN npm install -g bun && bun install
+COPY package.json ./
+RUN npm install
 
 # Copy source files
 COPY . .
 
 # Build the application
-RUN bun run build
+RUN npm run build
 
 # Final stage
 FROM nginx:alpine
