@@ -26,10 +26,8 @@ docker compose up
 or
 
 ```bash
-docker run -d \
-  -p 8080:80 \
-  k3scat/nya-novel
-
+docker run -d -p 8080:80 k3scat/nya-novel
+```
 Then open your browser and navigate to `http://localhost:8080`
 
 #### Option 2: Direct Usage
