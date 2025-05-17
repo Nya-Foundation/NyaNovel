@@ -34,10 +34,10 @@ Then open your browser and navigate to `http://localhost:8080`
 
 ```bash
 # Install dependencies
-bun install
+npm install
 
 # Build the project
-bun run build
+npm run build
 ```
 
 After building, you can serve the `dist` directory with any static file server.
@@ -57,7 +57,7 @@ NyaNovel runs entirely in your browser. Your API key is stored only in your loca
 
 ```bash
 # Install dependencies
-bun install
+npm install
 
 # Then use Live Server (vscode plugin) on the dist/ folder
 ```
