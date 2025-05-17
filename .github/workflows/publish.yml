@@ -27,11 +27,7 @@
 name: CI - Publish and Release
 
 on:
-  push:
-    branches:
-      - main # Trigger release only on pushes to main
-    paths:
-    - '**/*.py' # Trigger on changes to Python files
+  workflow_dispatch:
 
 # Prevent multiple concurrent releases
 concurrency:
