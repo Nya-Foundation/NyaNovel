@@ -537,14 +537,7 @@ button[disabled] {
   transition: all var(--transition-normal) ease;
 }
 
-.card-hover {
-  transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
-}
 
-.card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-}
 
 /* Tooltip Styles */
 .tooltip {
@@ -585,7 +578,6 @@ button[disabled] {
   border-right: 1px solid var(--border-secondary);
   transition: all var(--transition-normal) ease;
   z-index: 20;
-  height: calc(100vh - var(--header-height) - var(--footer-height));
   overflow: hidden;
   border-top-right-radius: var(--rounded-lg);
   border-bottom-right-radius: var(--rounded-lg);
@@ -631,6 +623,9 @@ button[disabled] {
   padding: 0.75rem;
   height: 100%;
   overflow-y: auto;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 /* Settings Tabs */
@@ -694,9 +689,8 @@ button[disabled] {
   opacity: 0.6;
   transition: all 0.3s ease;
   position: fixed;
-  top: var(--header-height);
   right: 0;
-  height: calc(100vh - var(--header-height) - var(--footer-height));
+  height: calc(100vh - var(--header-height) - var(--footer-height) - 3rem);
   background: var(--bg-card);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -768,10 +762,10 @@ button[disabled] {
 
 /* Main Content Area */
 .main-content-area {
+  display: flex;
   flex: 1;
-  padding: 0.75rem;
+  margin: 0 0.75rem ;
   transition: all var(--transition-normal) ease;
-  min-height: calc(100vh - var(--header-height) - var(--footer-height));
 }
 
 .main-content-area > div {
@@ -781,7 +775,7 @@ button[disabled] {
 
 /* Image Preview Container */
 .image-preview-container {
-  min-height: 85vh; /* Increased from 50vh for a larger preview */
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1042,4 +1036,50 @@ button[class*="from-primary"]:not([disabled]) {
 .modern-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
+}
+
+.main-container {
+    height: calc(100vh - var(--header-height) - var(--footer-height) - 2rem);
+}
+
+
+.btn-character {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--color-primary-300);
+  color: var(--color-primary-700);
+  background-color: var(--color-primary-100);
+  transition: all 0.2s;
+}
+
+.btn-character:hover {
+  border-style: solid;
+  border-color: var(--color-primary-400);
+  background-color: var(--color-primary-200);
+}
+
+.dark .btn-character {
+  color: var(--color-primary-200);
+  background-color: rgba(var(--color-primary-800), 0.4);
+  border-color: var(--color-primary-600);
+}
+
+.dark .btn-character:hover {
+  background-color: rgba(var(--color-primary-700), 0.7);
+  border-color: var(--color-primary-500);
+}
+
+
+label[for="vibe-transfer-file"]:hover {
+  background-color: var(--color-neutral-50);
+}
+
+.dark label[for="vibe-transfer-file"]:hover {
+  background-color: rgba(var(--color-neutral-800), 0.5);
 }
