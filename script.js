@@ -126,41 +126,32 @@ async function clearAllImagesFromDB() {
 
 // First load the NekoAI library
 function loadNekoAILibrary() {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "https://cdn.jsdelivr.net/npm/nekoai-js/dist/index.min.mjs";
-    script.onload = () => {
-      // When loaded, make the library available globally
-      import("https://cdn.jsdelivr.net/npm/nekoai-js/dist/index.min.mjs")
-        .then((module) => {
-          window.NovelAI = module.NovelAI;
-          window.Model = module.Model;
-          window.Resolution = module.Resolution;
-          window.Sampler = module.Sampler;
-          window.Noise = module.Noise;
-          window.Action = module.Action;
-          window.createCustomHost = module.createCustomHost; // Expose createCustomHost
-          NovelAI = module.NovelAI;
-          Model = module.Model;
-          Resolution = module.Resolution;
-          Sampler = module.Sampler;
-          Noise = module.Noise;
-          Action = module.Action;
-          createCustomHost = module.createCustomHost; // Assign to local variable
-          resolve();
-        })
-        .catch((error) => {
-          console.error("Error importing NekoAI library:", error);
-          reject(error);
-        });
-    };
-    script.onerror = () => {
-      console.error("Failed to load NekoAI library");
-      reject(new Error("Failed to load NekoAI library"));
-    };
-    document.head.appendChild(script);
-  });
+  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.1/dist/index.min.mjs")
+    .then((module) => {
+      // Expose to window and local scope
+      window.NovelAI = module.NovelAI;
+      window.Model = module.Model;
+      window.Resolution = module.Resolution;
+      window.Sampler = module.Sampler;
+      window.Noise = module.Noise;
+      window.Action = module.Action;
+      window.createCustomHost = module.createCustomHost;
+
+      // Optionally assign to local scope if needed
+      NovelAI = module.NovelAI;
+      Model = module.Model;
+      Resolution = module.Resolution;
+      Sampler = module.Sampler;
+      Noise = module.Noise;
+      Action = module.Action;
+      createCustomHost = module.createCustomHost;
+
+      return module;
+    })
+    .catch((error) => {
+      console.error("Error importing NekoAI library:", error);
+      throw error;
+    });
 }
 
 // Define the Alpine.js data function
