@@ -518,7 +518,7 @@
       </header>
 
       <!-- Main Content Area -->
-      <main class="flex-grow py-4 px-0">
+      <main class="flex-grow py-4 px-0 main-container">
         <div class="h-full flex flex-col lg:flex-row">
           <!-- Left Panel - Settings (collapsible) -->
           <div class="settings-panel" :class="{'settings-panel-collapsed': settingsCollapsed}">
@@ -943,7 +943,7 @@
 
                     <button
                       @click="addCharacter"
-                      class="w-full mt-2 py-3 px-4 bg-[var(--color-primary-100)] hover:bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)]/40 dark:hover:bg-[var(--color-primary-700)]/50 text-[var(--color-primary-700)] dark:text-[var(--color-primary-200)] font-semibold rounded-xl transition-all duration-200 flex items-center justify-center border-2 border-dashed border-[var(--color-primary-300)] dark:border-[var(--color-primary-600)] hover:border-solid hover:border-[var(--color-primary-400)] dark:hover:border-[var(--color-primary-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-400)]"
+                      class="btn-character"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -959,11 +959,11 @@
                     <div class="flex items-center justify-center w-full">
                       <label
                         for="vibe-transfer-file"
-                        class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-[var(--bg-input)]/50 dark:bg-[var(--bg-input)]/30 border-[var(--border-input)] hover:bg-[var(--color-neutral-50)] dark:hover:bg-[var(--color-neutral-700)]/50"
+                        class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-[var(--bg-input)]/50 dark:bg-[var(--bg-input)]/30 border-[var(--border-input)] "
                       >
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                           <template x-if="!vibeTransferImage">
-                            <div class="text-center">
+                            <div class="text-center flex items-center flex-col">
                               <svg class="w-8 h-8 mb-3 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                               </svg>
@@ -1020,7 +1020,7 @@
           <!-- Middle - Main Image Display (expanded) -->
           <div class="main-content-area">
             <!-- Main Image Display -->
-            <div class="rounded-xl shadow-[var(--shadow-lg)] backdrop-blur-md p-4 flex flex-col card-hover flex-grow bg-[var(--bg-card)]">
+            <div class="rounded-xl shadow-[var(--shadow-lg)] backdrop-blur-md p-4 flex flex-1 flex-col flex-grow bg-[var(--bg-card)]">
               <div class="flex justify-between items-center mb-5">
                 <h2 class="text-xl font-bold flex items-center text-primary-950 dark:text-primary-50">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1062,7 +1062,7 @@
               </div>
 
               <div
-                class="flex-grow rounded-xl flex items-center justify-center relative image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] min-h-[85vh] border border-[var(--border-secondary)]"
+                class="flex-grow rounded-xl flex items-center justify-center relative image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] border border-[var(--border-secondary)]"
               >
                 <div x-show="isGenerating" class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl">
                   <div class="flex flex-col items-center">
