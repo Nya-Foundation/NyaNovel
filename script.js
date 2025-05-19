@@ -530,15 +530,15 @@ function imageGenerator() {
       this.isGenerating = true;
 
       try {
-        // Update the seed if it's random (-1)
-
-        let usedSeed = this.generationSettings.seed;
-        if (this.generationSettings.seed === -1) {
-          usedSeed = Math.floor(Math.random() * 4294967295);
-        }
-
         // Create a direct copy of the settings object to avoid proxy issues
         const settings = JSON.parse(JSON.stringify(this.generationSettings));
+
+        // Update the seed if it's random (-1)
+        let usedSeed = settings.seed;
+        if (this.generationSettings.seed === -1) {
+          usedSeed = Math.floor(Math.random() * 4294967295);
+          settings.seed = usedSeed;
+        }
 
         // Process character prompts if available (only enabled ones with content)
         if (settings.characterPrompts && settings.characterPrompts.length > 0) {
@@ -554,7 +554,6 @@ function imageGenerator() {
         // Get custom host instance if needed
         const customHostObj = this.createCustomHostInstance();
 
-        console.log("Generating image with settings:", settings);
         const response = await this.client.generateImage(settings, customHostObj);
 
         if (response && response.length > 0) {
