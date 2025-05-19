@@ -126,7 +126,7 @@ async function clearAllImagesFromDB() {
 
 // First load the NekoAI library
 function loadNekoAILibrary() {
-  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.1/dist/index.min.mjs")
+  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.2/dist/index.min.mjs")
     .then((module) => {
       // Expose to window and local scope
       window.NovelAI = module.NovelAI;
@@ -136,6 +136,7 @@ function loadNekoAILibrary() {
       window.Noise = module.Noise;
       window.Action = module.Action;
       window.createCustomHost = module.createCustomHost;
+      window.parseImage = module.parseImage;
 
       // Optionally assign to local scope if needed
       NovelAI = module.NovelAI;
@@ -195,6 +196,19 @@ function imageGenerator() {
       baseDelay: 2000,
     },
 
+    // Emotion change options
+    emotionOptions: {
+      emotion: "neutral", // Default to neutral
+      prompt: "", // Default to empty, placeholder in HTML will guide
+      emotionLevel: 0, // Default to Normal
+    },
+
+    // Colorize tool options
+    colorizeOptions: {
+      prompt: "",
+      defry: 0,
+    },
+
     // Generation settings
     generationSettings: {
       prompt: "",
@@ -217,19 +231,10 @@ function imageGenerator() {
       addOriginalImage: true,
       autoSmea: false,
       characterPrompts: [], // Each item: { prompt: "", uc: "", center: { x: 0.5, y: 0.5 }, enabled: true }
-    },
-
-    // Emotion change options
-    emotionOptions: {
-      emotion: "neutral", // Default to neutral
-      prompt: "", // Default to empty, placeholder in HTML will guide
-      emotionLevel: 0, // Default to Normal
-    },
-
-    // Colorize tool options
-    colorizeOptions: {
-      prompt: "",
-      defry: 0,
+      // Multiple reference images support - initialized as undefined
+      referenceImageMultiple: undefined,
+      referenceStrengthMultiple: undefined,
+      referenceInformationExtractedMultiple: undefined,
     },
 
     // Auto-resize textarea based on content
@@ -437,29 +442,51 @@ function imageGenerator() {
 
     // Handle vibe transfer image upload
     handleVibeTransferUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
 
-      // Store the file directly, not as a proxy
-      this.vibeTransferFile = file;
+      // Initialize arrays if they don't exist yet
+      if (!this.generationSettings.referenceImageMultiple) {
+        this.generationSettings.referenceImageMultiple = [];
+        this.generationSettings.referenceStrengthMultiple = [];
+        this.generationSettings.referenceInformationExtractedMultiple = [];
+      }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.vibeTransferImage = e.target.result;
-      };
-      reader.readAsDataURL(file);
+      // Process each selected file
+      Array.from(files).forEach(async (file) => {
+        try {
+          const parsedImage = await window.parseImage(file);
+          this.generationSettings.referenceImageMultiple.push(parsedImage.base64);
+
+          // Add default settings for this image
+          this.generationSettings.referenceStrengthMultiple.push(0.6);
+          this.generationSettings.referenceInformationExtractedMultiple.push(1.0);
+        } catch (error) {
+          console.error("Error processing reference image:", error);
+          alert("Failed to process reference image. Please try another image.");
+        }
+      });
+
+      // Reset the file input
+      event.target.value = "";
     },
 
-    // Clear vibe transfer image
-    clearVibeTransfer(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.vibeTransferImage = null;
-      this.vibeTransferFile = null;
+    // Remove a reference image at the specified index
+    removeReferenceImage(index) {
+      this.generationSettings.referenceImageMultiple.splice(index, 1);
+      this.generationSettings.referenceStrengthMultiple.splice(index, 1);
+      this.generationSettings.referenceInformationExtractedMultiple.splice(index, 1);
+    },
+
+    // Clear all vibe transfer images
+    clearAllReferenceImages() {
+      this.generationSettings.referenceImageMultiple = undefined;
+      this.generationSettings.referenceStrengthMultiple = undefined;
+      this.generationSettings.referenceInformationExtractedMultiple = undefined;
       document.getElementById("vibe-transfer-file").value = "";
     },
 
-    // Fix the generateImage function to handle settings properly
+    // Simplified generateImage function without unnecessary params layer
     async generateImage() {
       if (!this.client) {
         this.showServerModal = true;
@@ -469,63 +496,33 @@ function imageGenerator() {
       this.isGenerating = true;
 
       try {
-        const seed = this.generationSettings.seed === -1 ? Math.floor(Math.random() * 4294967295) : this.generationSettings.seed;
-
-        // Prepare generation parameters - create a clean copy without proxies
-        const params = {
-          prompt: this.generationSettings.prompt,
-          negativePrompt: this.generationSettings.negativePrompt,
-          model: this.generationSettings.model,
-          resPreset: this.generationSettings.resPreset,
-          steps: Number(this.generationSettings.steps),
-          seed: Number(seed),
-          sampler: this.generationSettings.sampler,
-          scale: Number(this.generationSettings.scale),
-          nSamples: Number(this.generationSettings.nSamples),
-          ucPreset: Number(this.generationSettings.ucPreset),
-          qualityToggle: Boolean(this.generationSettings.qualityToggle),
-          dynamicThresholding: Boolean(this.generationSettings.dynamicThresholding),
-          cfgRescale: Number(this.generationSettings.cfgRescale),
-          noiseSchedule: this.generationSettings.noiseSchedule,
-          autoSmea: Boolean(this.generationSettings.autoSmea),
-        };
-
-        // Add character prompts if available - create clean copies
-        if (this.generationSettings.characterPrompts && this.generationSettings.characterPrompts.length > 0) {
-          const processedCharPrompts = this.generationSettings.characterPrompts
-            .filter((char) => char.enabled && String(char.prompt || "").trim()) // Only process enabled characters with a prompt
-            .map((char) => {
-              return {
-                prompt: String(char.prompt || "").trim(),
-                uc: String(char.uc || "").trim(),
-                center: char.center
-                  ? {
-                      x: Number(char.center.x) || 0.5,
-                      y: Number(char.center.y) || 0.5,
-                    }
-                  : undefined,
-              };
-            });
-
-          if (processedCharPrompts.length > 0) {
-            params.characterPrompts = processedCharPrompts;
-          }
+        // Update the seed if it's random (-1)
+        if (this.generationSettings.seed === -1) {
+          this.generationSettings.seed = Math.floor(Math.random() * 4294967295);
         }
 
-        // Add vibe transfer if available - handle the File object properly
-        if (this.vibeTransferFile) {
-          // Create a new File object to avoid proxy issues
-          const fileBlob = await this.vibeTransferFile.arrayBuffer();
-          const newFile = new File([fileBlob], this.vibeTransferFile.name, {
-            type: this.vibeTransferFile.type,
-          });
-          params.vibeTransfer = newFile;
+        // Store the original seed for saving with the image later
+        const usedSeed = this.generationSettings.seed;
+
+        // Create a direct copy of the settings object to avoid proxy issues
+        const settings = JSON.parse(JSON.stringify(this.generationSettings));
+
+        // Process character prompts if available (only enabled ones with content)
+        if (settings.characterPrompts && settings.characterPrompts.length > 0) {
+          settings.characterPrompts = settings.characterPrompts
+            .filter((char) => char.enabled && String(char.prompt || "").trim())
+            .map((char) => ({
+              prompt: String(char.prompt || "").trim(),
+              uc: String(char.uc || "").trim(),
+              center: char.center || { x: 0.5, y: 0.5 },
+            }));
         }
 
         // Get custom host instance if needed
         const customHostObj = this.createCustomHostInstance();
 
-        const response = await this.client.generateImage(params, customHostObj);
+        console.log("Generating image with settings:", settings);
+        const response = await this.client.generateImage(settings, customHostObj);
 
         if (response && response.length > 0) {
           // Save all generated images
@@ -537,7 +534,7 @@ function imageGenerator() {
                 negativePrompt: this.generationSettings.negativePrompt,
                 model: this.generationSettings.model,
                 steps: this.generationSettings.steps,
-                seed: seed,
+                seed: usedSeed,
                 sampler: this.generationSettings.sampler,
                 scale: this.generationSettings.scale,
               })
@@ -598,44 +595,6 @@ function imageGenerator() {
       } catch (error) {
         console.error(`Error applying ${tool}:`, error);
         alert(`Failed to apply ${tool}: ${error.message}`);
-      } finally {
-        this.isDirectorProcessing = false;
-      }
-    },
-
-    // Apply image variant generation
-    async applyImageVariant() {
-      if (!this.selectedImage) return;
-
-      this.isDirectorProcessing = true;
-      this.processedImage = null;
-
-      try {
-        // Convert the data URL to a Blob
-        const response = await fetch(this.selectedImage.dataUrl);
-        const blob = await response.blob();
-
-        // Generate a variant of the image
-        const result = await this.client.generateImage({
-          image: blob,
-          prompt: this.selectedImage.settings.prompt || "",
-          negativePrompt: this.selectedImage.settings.negativePrompt || "",
-          model: this.selectedImage.settings.model,
-          steps: this.selectedImage.settings.steps,
-          scale: this.selectedImage.settings.scale,
-          sampler: this.selectedImage.settings.sampler,
-          seed: Math.floor(Math.random() * 4294967295), // Use a new random seed
-          action: "img2img", // Use img2img action for variants
-          strength: 0.7, // Control how much the original image influences the result
-        });
-
-        if (result && result.length > 0) {
-          // Set the processed image
-          this.processedImage = result[0].toDataURL();
-        }
-      } catch (error) {
-        console.error("Error generating image variant:", error);
-        alert(`Failed to generate variant: ${error.message}`);
       } finally {
         this.isDirectorProcessing = false;
       }

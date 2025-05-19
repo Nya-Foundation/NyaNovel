@@ -479,7 +479,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[var(--text-on-accent)]" viewBox="0 0 20 20" fill="currentColor">
                 <path
                   fill-rule="evenodd"
-                  d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                  d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05A6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
                   clip-rule="evenodd"
                 />
               </svg>
@@ -834,16 +834,89 @@
                       <label for="dynamicThresholding" class="ml-2 text-sm text-[var(--text-secondary)]"> Dynamic Thresholding </label>
                     </div>
 
-                    <!-- Quality Toggle -->
-                    <div class="flex items-center">
-                      <input id="qualityToggle" type="checkbox" x-model="generationSettings.qualityToggle" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
-                      <label for="qualityToggle" class="ml-2 text-sm text-[var(--text-secondary)]"> Quality Toggle </label>
-                    </div>
-
                     <!-- Auto SMEA -->
                     <div class="flex items-center">
                       <input id="autoSmea" type="checkbox" x-model="generationSettings.autoSmea" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
                       <label for="autoSmea" class="ml-2 text-sm text-[var(--text-secondary)]"> Auto SMEA </label>
+                    </div>
+                  </div>
+
+                  <!-- Vibe Transfer (Multi-Reference Images) -->
+                  <div class="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
+                    <div class="flex justify-between items-center mb-3">
+                      <h3 class="text-md font-semibold text-primary-950 dark:text-primary-50">Vibe Transfer</h3>
+                      <button
+                        @click="clearAllReferenceImages"
+                        x-show="generationSettings.referenceImageMultiple && generationSettings.referenceImageMultiple.length > 0"
+                        class="px-2 py-1 text-xs bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg hover:bg-[var(--color-error)]/20 transition-colors flex items-center"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Clear All
+                      </button>
+                    </div>
+                    <p class="text-xs text-[var(--text-tertiary)] mb-3">Upload reference images to transfer their style to your generated images. Add multiple for better results.</p>
+
+                    <!-- Reference Image Upload -->
+                    <div class="flex items-center justify-center w-full mb-3">
+                      <label
+                        for="vibe-transfer-file"
+                        class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-[var(--bg-input)]/50 dark:bg-[var(--bg-input)]/30 border-[var(--border-input)] hover:bg-[var(--bg-input)]/70 dark:hover:bg-[var(--bg-input)]/50 transition-colors"
+                      >
+                        <div class="flex flex-col items-center justify-center pt-4 pb-4">
+                          <div class="text-center flex items-center flex-col">
+                            <svg class="w-6 h-6 mb-2 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <p class="mb-1 text-sm text-[var(--text-tertiary)]">Click to upload more reference images</p>
+                            <p class="text-xs text-[var(--text-tertiary)]">PNG, JPG or WEBP</p>
+                          </div>
+                        </div>
+                        <input id="vibe-transfer-file" type="file" class="hidden" @change="handleVibeTransferUpload" accept="image/*" multiple />
+                      </label>
+                    </div>
+
+                    <!-- Reference Images Gallery with Settings -->
+                    <div x-show="generationSettings.referenceImageMultiple && generationSettings.referenceImageMultiple.length > 0" class="space-y-4 mt-4">
+                      <template x-for="(refImage, index) in generationSettings.referenceImageMultiple" :key="index">
+                        <div class="p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)]">
+                          <div class="flex items-start space-x-3">
+                            <!-- Image Thumbnail -->
+                            <div class="relative w-20 h-20 flex-shrink-0 bg-[var(--bg-tertiary)] rounded-md overflow-hidden">
+                              <img :src="refImage" class="w-full h-full object-cover" />
+                              <button @click="removeReferenceImage(index)" class="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-md hover:bg-red-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            <!-- Settings for this image -->
+                            <div class="flex-grow space-y-2">
+                              <div>
+                                <div class="flex justify-between items-center mb-1">
+                                  <label class="text-xs text-[var(--text-tertiary)]">Reference Strength</label>
+                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.referenceStrengthMultiple[index].toFixed(2)"></span>
+                                </div>
+                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.referenceStrengthMultiple[index]" />
+                              </div>
+                              <div>
+                                <div class="flex justify-between items-center mb-1">
+                                  <label class="text-xs text-[var(--text-tertiary)]">Information Extracted</label>
+                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.referenceInformationExtractedMultiple[index].toFixed(2)"></span>
+                                </div>
+                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.referenceInformationExtractedMultiple[index]" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div x-show="!generationSettings.referenceImageMultiple || generationSettings.referenceImageMultiple.length === 0" class="mt-2 text-center p-3 bg-[var(--bg-input)]/50 rounded-lg">
+                      <p class="text-xs text-[var(--text-tertiary)]">No reference images added yet</p>
                     </div>
                   </div>
                 </div>
@@ -939,50 +1012,12 @@
                       </div>
                     </template>
 
-                    <button
-                      @click="addCharacter"
-                      class="btn-character"
-                    >
+                    <button @click="addCharacter" class="btn-character">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                       Add Character
                     </button>
-                  </div>
-
-                  <div class="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
-                    <h3 class="text-md font-semibold mb-3 text-primary-950 dark:text-primary-50">Vibe Transfer</h3>
-                    <p class="text-xs text-[var(--text-tertiary)] mb-3">Upload a reference image to transfer its style to your generated images.</p>
-
-                    <div class="flex items-center justify-center w-full">
-                      <label
-                        for="vibe-transfer-file"
-                        class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-[var(--bg-input)]/50 dark:bg-[var(--bg-input)]/30 border-[var(--border-input)] "
-                      >
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                          <template x-if="!vibeTransferImage">
-                            <div class="text-center flex items-center flex-col">
-                              <svg class="w-8 h-8 mb-3 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                              </svg>
-                              <p class="mb-1 text-sm text-[var(--text-tertiary)]">Click to upload or drag and drop</p>
-                              <p class="text-xs text-[var(--text-tertiary)]">PNG, JPG or WEBP</p>
-                            </div>
-                          </template>
-                          <template x-if="vibeTransferImage">
-                            <div class="relative w-full h-full flex items-center justify-center">
-                              <img :src="vibeTransferImage" class="max-h-28 max-w-full object-contain" />
-                              <button @click.stop="clearVibeTransfer" class="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          </template>
-                        </div>
-                        <input id="vibe-transfer-file" type="file" class="hidden" @change="handleVibeTransferUpload" accept="image/*" />
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>
