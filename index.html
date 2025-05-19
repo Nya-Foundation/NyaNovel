@@ -877,7 +877,6 @@
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-                          <!-- Left Column: Prompts - Changed from md:col-span-2 to md:col-span-3 to use full width -->
                           <div class="md:col-span-3 space-y-3">
                             <!-- Prompt Section -->
                             <div>
@@ -885,7 +884,7 @@
                               <textarea
                                 id="prompt"
                                 rows="3"
-                                x-model="generationSettings.prompt"
+                                x-model="character.prompt"
                                 @input="autoResizeTextarea($event.target)"
                                 class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] min-h-[calc(20vh)] md:min-h-[160px]"
                                 placeholder="1girl, blue hair, cute, anime style"
@@ -897,7 +896,7 @@
                               <textarea
                                 id="negativePrompt"
                                 rows="2"
-                                x-model="generationSettings.negativePrompt"
+                                x-model="character.uc"
                                 @input="autoResizeTextarea($event.target)"
                                 class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] min-h-[calc(15vh)] md:min-h-[120px]"
                                 placeholder="nsfw, lowres, bad anatomy, bad hands"
@@ -905,7 +904,6 @@
                             </div>
                           </div>
 
-                          <!-- Right Column: Controls - Move it below the textareas -->
                           <div class="md:col-span-3 space-y-4">
                             <div x-show="generationSettings.characterPrompts.length > 1" class="pt-1 space-y-3">
                               <p class="text-sm text-[var(--text-secondary)] font-medium">Positioning (0.1 - 0.9)</p>
