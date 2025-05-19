@@ -48,7 +48,9 @@ async function loadImagesFromDB() {
     const request = store.getAll();
 
     request.onsuccess = () => {
-      resolve(request.result);
+      const images = request.result;
+      images.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort by timestamp
+      resolve(images);
     };
 
     request.onerror = (event) => {
@@ -377,6 +379,14 @@ function imageGenerator() {
         // Load images from IndexedDB
         try {
           this.images = await loadImagesFromDB();
+
+          // Sort images by timestamp (newest first)
+          this.images.sort((a, b) => {
+            const timeA = new Date(a.timestamp).getTime();
+            const timeB = new Date(b.timestamp).getTime();
+            return timeB - timeA; // Descending order (newest first)
+          });
+
           if (this.images.length > 0) {
             this.selectImage(0);
           }
@@ -406,6 +416,30 @@ function imageGenerator() {
           retryStatusCodes: [429], // Fixed as per feedback
         },
       });
+    },
+
+    // Load settings from selected image
+    loadSettingsFromImage(image) {
+      if (!image || !image.settings) return;
+
+      // Create a copy of the current settings to avoid losing data not present in the image settings
+      const currentSettings = JSON.parse(JSON.stringify(this.generationSettings));
+
+      // Apply all settings from the image that exist
+      Object.keys(image.settings).forEach((key) => {
+        // Make sure we don't override properties that don't exist in our current settings
+        if (key in currentSettings) {
+          currentSettings[key] = image.settings[key];
+        }
+      });
+
+      // Update generation settings
+      this.generationSettings = currentSettings;
+
+      // If we're in a collapsed settings panel, expand it to show the loaded settings
+      if (this.settingsCollapsed) {
+        this.settingsCollapsed = false;
+      }
     },
 
     // Save server configuration
@@ -497,12 +531,11 @@ function imageGenerator() {
 
       try {
         // Update the seed if it's random (-1)
-        if (this.generationSettings.seed === -1) {
-          this.generationSettings.seed = Math.floor(Math.random() * 4294967295);
-        }
 
-        // Store the original seed for saving with the image later
-        const usedSeed = this.generationSettings.seed;
+        let usedSeed = this.generationSettings.seed;
+        if (this.generationSettings.seed === -1) {
+          usedSeed = Math.floor(Math.random() * 4294967295);
+        }
 
         // Create a direct copy of the settings object to avoid proxy issues
         const settings = JSON.parse(JSON.stringify(this.generationSettings));
@@ -527,16 +560,26 @@ function imageGenerator() {
         if (response && response.length > 0) {
           // Save all generated images
           for (const generatedImage of response) {
-            // Create a clean settings object without proxies
+            // Create a clean settings object with all relevant generation settings
             const cleanSettings = JSON.parse(
               JSON.stringify({
                 prompt: this.generationSettings.prompt,
                 negativePrompt: this.generationSettings.negativePrompt,
                 model: this.generationSettings.model,
+                resPreset: this.generationSettings.resPreset,
                 steps: this.generationSettings.steps,
                 seed: usedSeed,
                 sampler: this.generationSettings.sampler,
                 scale: this.generationSettings.scale,
+                action: this.generationSettings.action,
+                ucPreset: this.generationSettings.ucPreset,
+                qualityToggle: this.generationSettings.qualityToggle,
+                nSamples: this.generationSettings.nSamples,
+                dynamicThresholding: this.generationSettings.dynamicThresholding,
+                cfgRescale: this.generationSettings.cfgRescale,
+                noiseSchedule: this.generationSettings.noiseSchedule,
+                autoSmea: this.generationSettings.autoSmea,
+                characterPrompts: this.generationSettings.characterPrompts,
               })
             );
 
@@ -710,6 +753,9 @@ function imageGenerator() {
 
       this.selectedImageIndex = index;
       this.selectedImage = this.images[index];
+
+      // Load the settings from the selected image into the UI
+      this.loadSettingsFromImage(this.selectedImage);
     },
 
     // Delete current image
