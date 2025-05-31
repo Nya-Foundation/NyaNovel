@@ -128,7 +128,7 @@ async function clearAllImagesFromDB() {
 
 // First load the NekoAI library
 function loadNekoAILibrary() {
-  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.2/dist/index.min.mjs")
+  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.3/dist/index.min.mjs")
     .then((module) => {
       // Expose to window and local scope
       window.NovelAI = module.NovelAI;
@@ -216,7 +216,7 @@ function imageGenerator() {
       prompt: "",
       // This will be the global "Undesired Content"
       negativePrompt: "",
-      model: "nai-diffusion-4-full",
+      model: "nai-diffusion-4-5-full",
       resPreset: "normal_portrait",
       steps: 28,
       seed: -1,
@@ -595,9 +595,6 @@ function imageGenerator() {
             this.images.unshift(imageData);
           }
 
-          // Select the first generated image
-          this.selectImage(0);
-
           // Expand gallery to show new images
           this.galleryExpanded = true;
           setTimeout(() => {
@@ -731,7 +728,6 @@ function imageGenerator() {
         this.images.unshift(imageData);
         this.showDirectorTools = false;
         this.processedImage = null;
-        this.selectImage(0);
 
         // Expand gallery to show new processed image
         this.galleryExpanded = true;

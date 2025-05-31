@@ -631,8 +631,9 @@
                           x-model="generationSettings.model"
                           class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
                         >
-                          <option value="nai-diffusion-4-5-curated">✨NAI Diffusion V4.5 Curated</option>
-                          <option value="nai-diffusion-4-full" selected>✨NAI Diffusion V4 Full</option>
+                          <option value="nai-diffusion-4-5-full">✨NAI Diffusion V4.5 Full</option>
+                          <option value="nai-diffusion-4-5-curated">NAI Diffusion V4.5 Curated</option>
+                          <option value="nai-diffusion-4-full" selected>NAI Diffusion V4 Full</option>
                           <option value="nai-diffusion-4-curated-preview">NAI Diffusion V4 Curated</option>
                           <option value="nai-diffusion-3">NAI Diffusion Anime V3</option>
                           <option value="nai-diffusion-furry">NAI Diffusion Furry V3</option>
@@ -762,11 +763,12 @@
                         x-model="generationSettings.sampler"
                         class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
                       >
-                        <option value="k_euler">Euler</option>
+                        <option value="k_euler">✨Euler</option>
                         <option value="k_euler_ancestral">Euler Ancestral</option>
                         <option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
                         <option value="k_dpmpp_2m">DPM++ 2M</option>
                         <option value="k_dpmpp_sde">DPM++ SDE</option>
+                        <option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option>
                         <option value="ddim">DDIM</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">

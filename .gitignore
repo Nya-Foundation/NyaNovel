@@ -45,3 +45,4 @@ npm-debug.log*
 .jsrrc
 
 .setup.sh
+.build.sh
