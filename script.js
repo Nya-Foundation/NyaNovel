@@ -595,6 +595,9 @@ function imageGenerator() {
             this.images.unshift(imageData);
           }
 
+          // Select the first generated image
+          this.selectImage(0, false);
+
           // Expand gallery to show new images
           this.galleryExpanded = true;
           setTimeout(() => {
@@ -728,6 +731,7 @@ function imageGenerator() {
         this.images.unshift(imageData);
         this.showDirectorTools = false;
         this.processedImage = null;
+        this.selectImage(0);
 
         // Expand gallery to show new processed image
         this.galleryExpanded = true;
@@ -743,14 +747,16 @@ function imageGenerator() {
     },
 
     // Select image
-    selectImage(index) {
+    selectImage(index, loadSettings = true) {
       if (index < 0 || index >= this.images.length) return;
 
       this.selectedImageIndex = index;
       this.selectedImage = this.images[index];
 
-      // Load the settings from the selected image into the UI
-      this.loadSettingsFromImage(this.selectedImage);
+      if (loadSettings) {
+        // Load the settings from the selected image into the UI
+        this.loadSettingsFromImage(this.selectedImage);
+      }
     },
 
     // Delete current image
