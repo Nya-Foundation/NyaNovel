@@ -196,6 +196,7 @@ function imageGenerator() {
     retryConfig: {
       maxRetries: 3,
       baseDelay: 2000,
+      maxDelay: 60000, // Fixed as per feedback
     },
 
     // Emotion change options

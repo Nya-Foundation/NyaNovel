@@ -201,6 +201,27 @@
                     </div>
                     <p class="text-xs mt-1 text-[var(--text-tertiary)]">Time in milliseconds between retry attempts (1000-3000 recommended)</p>
                   </div>
+
+                  <div>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="max-delay">Max Delay (ms)</label>
+                    <div class="relative flex items-center">
+                      <div class="absolute left-0 pl-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        id="max-delay"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        class="w-full pl-10 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        placeholder="e.g., 10000"
+                        x-model.number="retryConfig.maxDelay"
+                      />
+                    </div>
+                    <p class="text-xs mt-1 text-[var(--text-tertiary)]">Maximum delay between retries in milliseconds (30000-60000 recommended)</p>
+                  </div>
                 </div>
               </div>
             </div>
