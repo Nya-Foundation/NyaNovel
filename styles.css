@@ -344,7 +344,7 @@ textarea {
 }
 
 #prompt,
-#negativePrompt {
+#negative_prompt {
   min-height: 4rem;
   resize: vertical;
   max-height: 12rem;
@@ -566,6 +566,45 @@ button[disabled] {
 .tooltip:hover .tooltiptext {
   visibility: visible;
   opacity: 1;
+}
+
+/* Tooltip styles for overlay action icons */
+.tooltip-container {
+  position: relative;
+}
+
+.tooltip-container .tooltip-text {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.tooltip-container .tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.tooltip-container:hover .tooltip-text {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Settings Panel Styles */
@@ -804,119 +843,27 @@ footer {
 @keyframes gradient-spin {
   0% {
     transform: rotate(0deg);
-    border-top-color: var(--color-primary-500);
-    border-bottom-color: var(--color-accent-500);
-  }
-  50% {
-    transform: rotate(180deg);
-    border-top-color: var(--color-secondary-500);
-    border-bottom-color: var(--color-primary-500);
   }
   100% {
     transform: rotate(360deg);
-    border-top-color: var(--color-primary-500);
-    border-bottom-color: var(--color-accent-500);
   }
 }
 
 .animate-gradient-spin {
-  animation: gradient-spin 1.5s linear infinite;
+  animation: gradient-spin 1s linear infinite;
 }
 
-@keyframes pop-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  70% {
-    transform: scale(1.05);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.pop-in {
-  animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes subtle-pulse {
-  0% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.7;
-  }
-}
-
-.animate-pulse {
-  animation: subtle-pulse 2s ease-in-out infinite;
-}
-
-@keyframes modal-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes modal-out {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-
-/* [x-transition:enter] {
-  animation: modal-in var(--transition-normal) ease forwards;
-}
-
-[x-transition:leave] {
-  animation: modal-out var(--transition-fast) ease forwards;
-} */
-
-@keyframes subtle-button-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(90, 173, 255, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(90, 173, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(90, 173, 255, 0);
-  }
-}
-
-button[class*="from-primary"]:not([disabled]) {
-  animation: subtle-button-pulse 2s infinite;
-}
-
-/* Add a slow pulse animation for the disclaimer icon */
 @keyframes pulse-slow {
   0%, 100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.05);
+    opacity: 0.3;
   }
 }
 
 .animate-pulse-slow {
-  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-slow 3s ease-in-out infinite;
 }
 
 /* Alpine.js Utilities */

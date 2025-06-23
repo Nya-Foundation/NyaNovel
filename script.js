@@ -6,7 +6,7 @@ document.addEventListener("alpine:init", () => {
 });
 
 // We'll load NekoAI library dynamically once the DOM is ready
-let NovelAI, Model, Resolution, Sampler, Noise, Action, createCustomHost;
+let NovelAI, Model, Resolution, Sampler, Noise, Action, EventType;
 
 // Setup IndexedDB
 const DB_NAME = "nyanovel-images";
@@ -73,6 +73,9 @@ async function saveImageToDB(image) {
       timestamp: image.timestamp,
       filename: image.filename,
       settings: JSON.parse(JSON.stringify(image.settings || {})), // Safely clone settings
+      batchId: image.batchId || null,
+      batchIndex: image.batchIndex || 0,
+      batchSize: image.batchSize || 1,
     };
 
     const request = store.add(cleanImage);
@@ -128,7 +131,7 @@ async function clearAllImagesFromDB() {
 
 // First load the NekoAI library
 function loadNekoAILibrary() {
-  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.3/dist/index.min.mjs")
+  return import("https://cdn.jsdelivr.net/npm/nekoai-js@1.2.4/dist/index.min.mjs")
     .then((module) => {
       // Expose to window and local scope
       window.NovelAI = module.NovelAI;
@@ -137,8 +140,8 @@ function loadNekoAILibrary() {
       window.Sampler = module.Sampler;
       window.Noise = module.Noise;
       window.Action = module.Action;
-      window.createCustomHost = module.createCustomHost;
       window.parseImage = module.parseImage;
+      window.EventType = module.EventType;
 
       // Optionally assign to local scope if needed
       NovelAI = module.NovelAI;
@@ -147,8 +150,7 @@ function loadNekoAILibrary() {
       Sampler = module.Sampler;
       Noise = module.Noise;
       Action = module.Action;
-      createCustomHost = module.createCustomHost;
-
+      EventType = module.EventType;
       return module;
     })
     .catch((error) => {
@@ -160,53 +162,45 @@ function loadNekoAILibrary() {
 // Define the Alpine.js data function
 function imageGenerator() {
   return {
-    // State
+    // Core State
     token: localStorage.getItem("nai-token") || "",
     serverUrl: localStorage.getItem("nai-server") || "https://image.novelai.net",
-
-    // Helper method for creating custom host
-    createCustomHostInstance() {
-      if (this.serverUrl && this.serverUrl !== "https://image.novelai.net") {
-        return window.createCustomHost(this.serverUrl, "binary/octet-stream");
-      }
-      return undefined;
-    },
-
     darkMode: localStorage.getItem("darkMode") === "true" || (localStorage.getItem("darkMode") === null && window.matchMedia("(prefers-color-scheme: dark)").matches),
+    client: null,
+
+    // UI State
     showServerModal: false,
     showDirectorTools: false,
     showEmotionControls: false,
-    showColorizeControls: false, // Added for colorize tool
+    showColorizeControls: false,
+    settingsCollapsed: false,
+    galleryExpanded: false,
+    activeSettingsTab: "basic",
+    showFocusedView: false,
+    focusedImageIndex: null,
+
+    // Generation State
     isGenerating: false,
     isDirectorProcessing: false,
     images: [],
-    selectedImageIndex: null,
     selectedImage: null,
+    selectedBatch: null,
     processedImage: null,
-    client: null,
-    settingsCollapsed: false,
-    galleryExpanded: false,
-    galleryHovered: false,
-    activeSettingsTab: "basic",
-    vibeTransferImage: null,
-    vibeTransferFile: null,
-    themeTransitioning: false,
 
-    // Retry Configuration
+    // Configuration
     retryConfig: {
       maxRetries: 3,
       baseDelay: 2000,
-      maxDelay: 60000, // Fixed as per feedback
+      maxDelay: 60000,
     },
 
-    // Emotion change options
+    // Director Tools Options
     emotionOptions: {
-      emotion: "neutral", // Default to neutral
-      prompt: "", // Default to empty, placeholder in HTML will guide
-      emotionLevel: 0, // Default to Normal
+      emotion: "neutral",
+      prompt: "",
+      emotionLevel: 0,
     },
 
-    // Colorize tool options
     colorizeOptions: {
       prompt: "",
       defry: 0,
@@ -215,150 +209,79 @@ function imageGenerator() {
     // Generation settings
     generationSettings: {
       prompt: "",
-      // This will be the global "Undesired Content"
-      negativePrompt: "",
+      negative_prompt: "",
       model: "nai-diffusion-4-5-full",
       resPreset: "normal_portrait",
+      width: 832,
+      height: 1216,
       steps: 28,
       seed: -1,
-      sampler: "k_euler_ancestral", // Changed default sampler
-      scale: 5.5, // Will be "Prompt Guidance"
+      sampler: "k_euler_ancestral",
+      scale: 5.5,
       action: "generate",
-      ucPreset: 0, // 0: Heavy, 1: Light, 2: None
+      ucPreset: 0,
       qualityToggle: true,
-      nSamples: 1, // Batch Size
-      dynamicThresholding: false,
-      cfgRescale: 0, // Will be "Prompt Guidance Rescale"
-      noiseSchedule: "karras",
-      controlnetStrength: 1,
-      addOriginalImage: true,
+      n_samples: 1,
+      dynamic_thresholding: false,
+      cfg_rescale: 0,
+      noise_schedule: "karras",
       autoSmea: false,
-      characterPrompts: [], // Each item: { prompt: "", uc: "", center: { x: 0.5, y: 0.5 }, enabled: true }
-      // Multiple reference images support - initialized as undefined
-      referenceImageMultiple: undefined,
-      referenceStrengthMultiple: undefined,
-      referenceInformationExtractedMultiple: undefined,
+      characterPrompts: [],
+      reference_image_multiple: undefined,
+      reference_strength_multiple: undefined,
+      reference_information_extracted_multiple: undefined,
     },
 
-    // Auto-resize textarea based on content
+    // Helper Methods
     autoResizeTextarea(textarea) {
       if (!textarea) return;
-
-      // Reset height to get the correct scrollHeight
       textarea.style.height = "auto";
-
-      // Set the height to match content (with a max height)
-      const maxHeight = 250; // Maximum height in pixels
-      const minHeight = 100; // Minimum height in pixels
+      const maxHeight = 250;
+      const minHeight = 100;
       const scrollHeight = textarea.scrollHeight;
       textarea.style.height = Math.max(minHeight, Math.min(scrollHeight, maxHeight)) + "px";
-
-      // If content exceeds max height, enable scrolling
       textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
     },
 
-    // Apply theme to HTML element with smooth transition
     applyTheme() {
-      // Set transitioning state
-      this.themeTransitioning = true;
-
-      // Apply the appropriate class to the HTML element
-      if (this.darkMode) {
-        document.documentElement.classList.add("dark");
-        document.documentElement.classList.remove("light");
-      } else {
-        document.documentElement.classList.add("light");
-        document.documentElement.classList.remove("dark");
-      }
-
-      // Add transition class for smooth theme change
-      document.documentElement.classList.add("theme-transitioning");
-
-      // Force a repaint to ensure all components update their styles
-      document.body.style.display = "none";
-      document.body.offsetHeight; // Trigger a reflow
-      document.body.style.display = "";
-
-      // Auto-resize all textareas after theme change
-      setTimeout(() => {
-        document.querySelectorAll("textarea").forEach((textarea) => {
-          this.autoResizeTextarea(textarea);
-        });
-
-        // Remove transition class and set transitioning state to false
-        document.documentElement.classList.remove("theme-transitioning");
-        this.themeTransitioning = false;
-      }, 300);
+      const htmlEl = document.documentElement;
+      htmlEl.classList.toggle("dark", this.darkMode);
+      htmlEl.classList.toggle("light", !this.darkMode);
     },
 
-    // Listen for system theme changes
-    setupThemeListener() {
-      // Only set up the listener if the user hasn't explicitly set a preference
-      if (localStorage.getItem("darkMode") === null) {
-        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
-          this.darkMode = e.matches;
-          this.applyTheme();
-        });
-      }
+    setupGalleryHover() {
+      let hoverTimeout;
+      document.addEventListener("mousemove", (e) => {
+        const galleryPanel = document.querySelector(".gallery-panel");
+        if (!galleryPanel) return;
+
+        const rect = galleryPanel.getBoundingClientRect();
+        const isHovering = e.clientX >= rect.left - 20 && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+
+        if (isHovering) {
+          this.galleryExpanded = true;
+          clearTimeout(hoverTimeout);
+        } else if (this.galleryExpanded) {
+          hoverTimeout = setTimeout(() => {
+            this.galleryExpanded = false;
+          }, 300);
+        }
+      });
     },
 
     // Initialization
     async init() {
       console.log("Initializing NyaNovel image generator...");
 
-      // Check if the disclaimer has been accepted before
-      const disclaimerAccepted = localStorage.getItem("disclaimerAccepted");
-      if (disclaimerAccepted === "true") {
-        // Hide the disclaimer if it has been accepted
-        this.$nextTick(() => {
-          const disclaimerElement = document.querySelector(".z-\\[60\\]");
-          if (disclaimerElement) {
-            // Access the Alpine.js data
-            const disclaimerData = Alpine.data(disclaimerElement);
-            if (disclaimerData && disclaimerData.show !== undefined) {
-              disclaimerData.show = false;
-            }
-          }
-        });
-      }
-
       // Apply theme immediately
       this.applyTheme();
 
-      // Set up theme listener for system preference changes
-      this.setupThemeListener();
+      // Setup gallery hover behavior
+      this.setupGalleryHover();
 
-      // Set up event listeners for gallery expansion
-      document.addEventListener("mousemove", (e) => {
-        const galleryPanel = document.querySelector(".gallery-panel");
-        if (!galleryPanel) return;
-
-        const rect = galleryPanel.getBoundingClientRect();
-        const isHovering =
-          e.clientX >= rect.left - 20 && // Add a small buffer zone
-          e.clientX <= rect.right &&
-          e.clientY >= rect.top &&
-          e.clientY <= rect.bottom;
-
-        if (isHovering !== this.galleryHovered) {
-          this.galleryHovered = isHovering;
-          if (isHovering) {
-            this.galleryExpanded = true;
-          } else {
-            setTimeout(() => {
-              if (!this.galleryHovered) {
-                this.galleryExpanded = false;
-              }
-            }, 300);
-          }
-        }
-      });
-
-      // Auto-resize textareas on initial load
+      // Auto-resize textareas on load
       setTimeout(() => {
-        document.querySelectorAll("textarea").forEach((textarea) => {
-          this.autoResizeTextarea(textarea);
-        });
+        document.querySelectorAll("textarea").forEach((textarea) => this.autoResizeTextarea(textarea));
       }, 100);
 
       try {
@@ -373,26 +296,15 @@ function imageGenerator() {
         if (this.token) {
           this.initClient();
         } else {
-          // Show server configuration modal if no token is found
           this.showServerModal = true;
         }
 
-        // Load images from IndexedDB
-        try {
-          this.images = await loadImagesFromDB();
+        // Load and display existing images
+        this.images = await loadImagesFromDB();
+        this.images.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-          // Sort images by timestamp (newest first)
-          this.images.sort((a, b) => {
-            const timeA = new Date(a.timestamp).getTime();
-            const timeB = new Date(b.timestamp).getTime();
-            return timeB - timeA; // Descending order (newest first)
-          });
-
-          if (this.images.length > 0) {
-            this.selectImage(0);
-          }
-        } catch (error) {
-          console.error("Failed to load images:", error);
+        if (this.images.length > 0) {
+          this.selectBatch(0);
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -408,42 +320,18 @@ function imageGenerator() {
       }
       this.client = new window.NovelAI({
         token: this.token,
-        // customHost removed here, will be handled per-call for specific methods
+        host: this.serverUrl,
         retry: {
           enabled: true,
           maxRetries: parseInt(this.retryConfig.maxRetries) || 3,
           baseDelay: parseInt(this.retryConfig.baseDelay) || 2000,
-          maxDelay: 60000, // Fixed as per feedback
-          retryStatusCodes: [429], // Fixed as per feedback
+          maxDelay: 60000,
+          retryStatusCodes: [429],
         },
       });
     },
 
-    // Load settings from selected image
-    loadSettingsFromImage(image) {
-      if (!image || !image.settings) return;
-
-      // Create a copy of the current settings to avoid losing data not present in the image settings
-      const currentSettings = JSON.parse(JSON.stringify(this.generationSettings));
-
-      // Apply all settings from the image that exist
-      Object.keys(image.settings).forEach((key) => {
-        // Make sure we don't override properties that don't exist in our current settings
-        if (key in currentSettings) {
-          currentSettings[key] = image.settings[key];
-        }
-      });
-
-      // Update generation settings
-      this.generationSettings = currentSettings;
-
-      // If we're in a collapsed settings panel, expand it to show the loaded settings
-      if (this.settingsCollapsed) {
-        this.settingsCollapsed = false;
-      }
-    },
-
-    // Save server configuration
+    // Configuration methods
     saveServerConfig() {
       localStorage.setItem("nai-token", this.token);
       localStorage.setItem("nai-server", this.serverUrl);
@@ -453,14 +341,13 @@ function imageGenerator() {
       this.showServerModal = false;
     },
 
-    // Toggle dark mode
     toggleDarkMode() {
       this.darkMode = !this.darkMode;
       localStorage.setItem("darkMode", this.darkMode.toString());
       this.applyTheme();
     },
 
-    // Add a character to the character prompts
+    // Character management
     addCharacter() {
       this.generationSettings.characterPrompts.push({
         prompt: "",
@@ -470,7 +357,6 @@ function imageGenerator() {
       });
     },
 
-    // Remove a character from the character prompts
     removeCharacter(index) {
       this.generationSettings.characterPrompts.splice(index, 1);
     },
@@ -481,47 +367,44 @@ function imageGenerator() {
       if (!files || files.length === 0) return;
 
       // Initialize arrays if they don't exist yet
-      if (!this.generationSettings.referenceImageMultiple) {
-        this.generationSettings.referenceImageMultiple = [];
-        this.generationSettings.referenceStrengthMultiple = [];
-        this.generationSettings.referenceInformationExtractedMultiple = [];
+      if (!this.generationSettings.reference_image_multiple) {
+        this.generationSettings.reference_image_multiple = [];
+        this.generationSettings.reference_strength_multiple = [];
+        this.generationSettings.reference_information_extracted_multiple = [];
       }
 
       // Process each selected file
       Array.from(files).forEach(async (file) => {
         try {
           const parsedImage = await window.parseImage(file);
-          this.generationSettings.referenceImageMultiple.push(parsedImage.base64);
-
-          // Add default settings for this image
-          this.generationSettings.referenceStrengthMultiple.push(0.6);
-          this.generationSettings.referenceInformationExtractedMultiple.push(1.0);
+          this.generationSettings.reference_image_multiple.push(parsedImage.base64);
+          this.generationSettings.reference_strength_multiple.push(0.6);
+          this.generationSettings.reference_information_extracted_multiple.push(1.0);
         } catch (error) {
           console.error("Error processing reference image:", error);
           alert("Failed to process reference image. Please try another image.");
         }
       });
 
-      // Reset the file input
       event.target.value = "";
     },
 
     // Remove a reference image at the specified index
     removeReferenceImage(index) {
-      this.generationSettings.referenceImageMultiple.splice(index, 1);
-      this.generationSettings.referenceStrengthMultiple.splice(index, 1);
-      this.generationSettings.referenceInformationExtractedMultiple.splice(index, 1);
+      this.generationSettings.reference_image_multiple.splice(index, 1);
+      this.generationSettings.reference_strength_multiple.splice(index, 1);
+      this.generationSettings.reference_information_extracted_multiple.splice(index, 1);
     },
 
     // Clear all vibe transfer images
     clearAllReferenceImages() {
-      this.generationSettings.referenceImageMultiple = undefined;
-      this.generationSettings.referenceStrengthMultiple = undefined;
-      this.generationSettings.referenceInformationExtractedMultiple = undefined;
+      this.generationSettings.reference_image_multiple = undefined;
+      this.generationSettings.reference_strength_multiple = undefined;
+      this.generationSettings.reference_information_extracted_multiple = undefined;
       document.getElementById("vibe-transfer-file").value = "";
     },
 
-    // Simplified generateImage function without unnecessary params layer
+    // Generate images with streaming support
     async generateImage() {
       if (!this.client) {
         this.showServerModal = true;
@@ -529,20 +412,19 @@ function imageGenerator() {
       }
 
       this.isGenerating = true;
+      this.selectedBatch = null;
+      this.selectedImage = null;
 
       try {
-        // Create a direct copy of the settings object to avoid proxy issues
         const settings = JSON.parse(JSON.stringify(this.generationSettings));
 
-        // Update the seed if it's random (-1)
-        let usedSeed = settings.seed;
-        if (this.generationSettings.seed === -1) {
-          usedSeed = Math.floor(Math.random() * 4294967295);
-          settings.seed = usedSeed;
+        // Update seed if random
+        if (settings.seed === -1) {
+          settings.seed = Math.floor(Math.random() * 4294967295);
         }
 
-        // Process character prompts if available (only enabled ones with content)
-        if (settings.characterPrompts && settings.characterPrompts.length > 0) {
+        // Process character prompts
+        if (settings.characterPrompts?.length > 0) {
           settings.characterPrompts = settings.characterPrompts
             .filter((char) => char.enabled && String(char.prompt || "").trim())
             .map((char) => ({
@@ -552,60 +434,23 @@ function imageGenerator() {
             }));
         }
 
-        // Get custom host instance if needed
-        const customHostObj = this.createCustomHostInstance();
+        const response = await this.client.generateImage(settings, true);
 
-        const response = await this.client.generateImage(settings, customHostObj);
+        // Handle streaming response
+        if (response && typeof response[Symbol.asyncIterator] === "function") {
+          await this.handleStreamingResponse(response, settings);
+        } else if (Array.isArray(response)) {
+          if (response.length > 0) {
+            const batchId = Date.now();
+            const finalImages = response.map((image, index) => ({
+              image: image,
+              sampleIndex: index,
+            }));
 
-        if (response && response.length > 0) {
-          // Save all generated images
-          for (const generatedImage of response) {
-            // Create a clean settings object with all relevant generation settings
-            const cleanSettings = JSON.parse(
-              JSON.stringify({
-                prompt: this.generationSettings.prompt,
-                negativePrompt: this.generationSettings.negativePrompt,
-                model: this.generationSettings.model,
-                resPreset: this.generationSettings.resPreset,
-                steps: this.generationSettings.steps,
-                seed: usedSeed,
-                sampler: this.generationSettings.sampler,
-                scale: this.generationSettings.scale,
-                action: this.generationSettings.action,
-                ucPreset: this.generationSettings.ucPreset,
-                qualityToggle: this.generationSettings.qualityToggle,
-                nSamples: this.generationSettings.nSamples,
-                dynamicThresholding: this.generationSettings.dynamicThresholding,
-                cfgRescale: this.generationSettings.cfgRescale,
-                noiseSchedule: this.generationSettings.noiseSchedule,
-                autoSmea: this.generationSettings.autoSmea,
-                characterPrompts: this.generationSettings.characterPrompts,
-              })
-            );
-
-            const imageData = {
-              dataUrl: generatedImage.toDataURL(),
-              timestamp: new Date().toISOString(),
-              settings: cleanSettings,
-              filename: `nyanovel_${Date.now()}.png`,
-            };
-
-            const id = await saveImageToDB(imageData);
-            imageData.id = id;
-
-            this.images.unshift(imageData);
+            await this.saveFinalImages(finalImages, batchId, settings);
           }
-
-          // Select the first generated image
-          this.selectImage(0, false);
-
-          // Expand gallery to show new images
-          this.galleryExpanded = true;
-          setTimeout(() => {
-            if (!this.galleryHovered) {
-              this.galleryExpanded = false;
-            }
-          }, 3000);
+        } else {
+          throw new Error("Unexpected response format from image generation");
         }
       } catch (error) {
         console.error("Error generating image:", error);
@@ -613,6 +458,91 @@ function imageGenerator() {
       } finally {
         this.isGenerating = false;
       }
+    },
+
+    // Handle streaming response
+    async handleStreamingResponse(response, settings) {
+      console.log("Handling streaming response...");
+
+      const tempBatch = [];
+      const batchId = Date.now();
+      let finalImages = [];
+
+      // Initialize temp batch structure
+      for (let i = 0; i < settings.n_samples; i++) {
+        tempBatch.push({
+          dataUrl: null,
+          isIntermediate: true,
+          sampleIndex: i,
+          stepIndex: 0,
+          batchId: batchId,
+          status: "initializing",
+          progress: 0,
+        });
+      }
+
+      this.selectedBatch = tempBatch;
+
+      // Process streaming events
+      for await (const event of response) {
+        if (event.event_type === window.EventType.INTERMEDIATE) {
+          const sampleIndex = event.samp_ix;
+          if (sampleIndex < tempBatch.length) {
+            tempBatch[sampleIndex] = {
+              ...tempBatch[sampleIndex],
+              dataUrl: event.image.toDataURL(),
+              stepIndex: event.step_ix,
+              isIntermediate: true,
+              status: "generating",
+              progress: Math.round((event.step_ix / settings.steps) * 100),
+            };
+            this.selectedBatch = [...tempBatch];
+          }
+        } else if (event.event_type === window.EventType.FINAL) {
+          finalImages.push({
+            image: event.image,
+            sampleIndex: event.samp_ix,
+          });
+        }
+      }
+
+      // Process final images
+      if (finalImages.length > 0) {
+        await this.saveFinalImages(finalImages, batchId, settings);
+      }
+    },
+
+    // Save final images to database
+    async saveFinalImages(finalImages, batchId, settings) {
+      finalImages.sort((a, b) => a.sampleIndex - b.sampleIndex);
+
+      for (let i = 0; i < finalImages.length; i++) {
+        const finalImageData = finalImages[i];
+        const imageData = {
+          dataUrl: finalImageData.image.toDataURL(),
+          timestamp: new Date().toISOString(),
+          settings: settings,
+          filename: `nyanovel_${batchId}_${i + 1}.png`,
+          batchId: batchId,
+          batchIndex: i,
+          batchSize: finalImages.length,
+        };
+
+        const id = await saveImageToDB(imageData);
+        imageData.id = id;
+        this.images.unshift(imageData);
+      }
+
+      this.selectBatch(0);
+      this.expandGalleryTemporarily();
+    },
+
+    // Expand gallery temporarily
+    expandGalleryTemporarily() {
+      this.galleryExpanded = true;
+      setTimeout(() => {
+        this.galleryExpanded = false;
+      }, 3000);
     },
 
     // Apply director tool
@@ -623,17 +553,9 @@ function imageGenerator() {
       this.processedImage = null;
 
       try {
-        // Convert the data URL to a Blob
         const response = await fetch(this.selectedImage.dataUrl);
         const blob = await response.blob();
-
-        // Get custom host instance if needed
-        const customHostObj = this.createCustomHostInstance();
-
-        // Apply the selected tool with custom host
-        const result = await this.client[tool](blob, customHostObj);
-
-        // Set the processed image
+        const result = await this.client[tool](blob);
         this.processedImage = result.toDataURL();
       } catch (error) {
         console.error(`Error applying ${tool}:`, error);
@@ -651,17 +573,9 @@ function imageGenerator() {
       this.processedImage = null;
 
       try {
-        // Convert the data URL to a Blob
         const response = await fetch(this.selectedImage.dataUrl);
         const blob = await response.blob();
-
-        // Get custom host instance if needed
-        const customHostObj = this.createCustomHostInstance();
-
-        // Apply emotion change
-        const result = await this.client.changeEmotion(blob, customHostObj, this.emotionOptions.emotion, this.emotionOptions.prompt, Number(this.emotionOptions.emotionLevel));
-
-        // Set the processed image
+        const result = await this.client.changeEmotion(blob, this.emotionOptions.emotion, this.emotionOptions.prompt, Number(this.emotionOptions.emotionLevel));
         this.processedImage = result.toDataURL();
       } catch (error) {
         console.error("Error changing emotion:", error);
@@ -681,11 +595,7 @@ function imageGenerator() {
       try {
         const response = await fetch(this.selectedImage.dataUrl);
         const blob = await response.blob();
-
-        // Get custom host instance if needed
-        const customHostObj = this.createCustomHostInstance();
-
-        const result = await this.client.colorize(blob, customHostObj, this.colorizeOptions.prompt, Number(this.colorizeOptions.defry));
+        const result = await this.client.colorize(blob, this.colorizeOptions.prompt, Number(this.colorizeOptions.defry));
         this.processedImage = result.toDataURL();
       } catch (error) {
         console.error("Error applying colorize:", error);
@@ -700,19 +610,15 @@ function imageGenerator() {
       if (!this.processedImage) return;
 
       try {
-        let processedWithTool = "directorTools"; // Default
+        let processedWithTool = "directorTools";
         let toolOptions = {};
 
         if (this.showEmotionControls) {
           processedWithTool = "changeEmotion";
-          toolOptions = {
-            emotionOptions: JSON.parse(JSON.stringify(this.emotionOptions)),
-          };
+          toolOptions = { emotionOptions: JSON.parse(JSON.stringify(this.emotionOptions)) };
         } else if (this.showColorizeControls) {
           processedWithTool = "colorize";
-          toolOptions = {
-            colorizeOptions: JSON.parse(JSON.stringify(this.colorizeOptions)),
-          };
+          toolOptions = { colorizeOptions: JSON.parse(JSON.stringify(this.colorizeOptions)) };
         }
 
         const imageData = {
@@ -732,49 +638,161 @@ function imageGenerator() {
         this.images.unshift(imageData);
         this.showDirectorTools = false;
         this.processedImage = null;
-        this.selectImage(0);
-
-        // Expand gallery to show new processed image
-        this.galleryExpanded = true;
-        setTimeout(() => {
-          if (!this.galleryHovered) {
-            this.galleryExpanded = false;
-          }
-        }, 3000);
+        this.selectBatch(0);
+        this.expandGalleryTemporarily();
       } catch (error) {
         console.error("Error saving processed image:", error);
         alert(`Failed to save processed image: ${error.message}`);
       }
     },
 
-    // Select image
-    selectImage(index, loadSettings = true) {
+    // Select batch by index of first image in batch
+    selectBatch(index) {
       if (index < 0 || index >= this.images.length) return;
 
-      this.selectedImageIndex = index;
-      this.selectedImage = this.images[index];
-
-      if (loadSettings) {
-        // Load the settings from the selected image into the UI
-        this.loadSettingsFromImage(this.selectedImage);
+      const firstImage = this.images[index];
+      if (firstImage.batchId) {
+        this.selectedBatch = this.images.filter((img) => img.batchId === firstImage.batchId);
+        this.selectedImage = firstImage;
+      } else {
+        this.selectedBatch = [firstImage];
+        this.selectedImage = firstImage;
       }
     },
 
-    // Delete current image
-    async deleteCurrentImage() {
-      if (this.selectedImageIndex === null) return;
+    // Get grouped images for gallery display
+    getGroupedGalleryImages() {
+      const grouped = [];
+      const seenBatchIds = new Set();
 
-      try {
-        const imageId = this.selectedImage.id;
-        await deleteImageFromDB(imageId);
+      for (const image of this.images) {
+        if (image.batchId && seenBatchIds.has(image.batchId)) {
+          continue;
+        }
 
-        this.images = this.images.filter((img) => img.id !== imageId);
-
-        if (this.images.length > 0) {
-          this.selectImage(0);
+        if (image.batchId) {
+          seenBatchIds.add(image.batchId);
+          const batchImages = this.images.filter((img) => img.batchId === image.batchId);
+          grouped.push({
+            ...image,
+            batchSize: batchImages.length,
+            isFirstOfBatch: true,
+          });
         } else {
-          this.selectedImageIndex = null;
-          this.selectedImage = null;
+          grouped.push({
+            ...image,
+            batchSize: 1,
+            isFirstOfBatch: false,
+          });
+        }
+      }
+
+      return grouped;
+    },
+
+    // Focus on specific image in batch
+    focusImage(index) {
+      this.focusedImageIndex = index;
+      this.showFocusedView = true;
+    },
+
+    // Close focused view
+    closeFocusedView() {
+      this.showFocusedView = false;
+      this.focusedImageIndex = null;
+    },
+
+    // Download specific image from batch
+    downloadImageFromBatch(image) {
+      const a = document.createElement("a");
+      a.href = image.dataUrl;
+      a.download = image.filename || "nyanovel-image.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    },
+
+    // Copy image to clipboard
+    async copyImageToClipboard(image) {
+      try {
+        const response = await fetch(image.dataUrl);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob,
+          }),
+        ]);
+        // Show temporary feedback
+        this.showTooltipFeedback("Image copied to clipboard!");
+      } catch (error) {
+        console.error("Failed to copy image:", error);
+        // Fallback: try to copy the data URL as text
+        try {
+          await navigator.clipboard.writeText(image.dataUrl);
+          this.showTooltipFeedback("Image data copied to clipboard!");
+        } catch (fallbackError) {
+          console.error("Failed to copy image data:", fallbackError);
+          alert("Failed to copy image to clipboard");
+        }
+      }
+    },
+
+    // Copy seed from image to generation settings
+    copySeedFromImage(image) {
+      if (image.settings && image.settings.seed !== undefined) {
+        this.generationSettings.seed = image.settings.seed;
+        this.showTooltipFeedback(`Seed ${image.settings.seed} copied to settings!`);
+      } else {
+        this.generationSettings.seed = -1;
+      }
+    },
+
+    // Show temporary tooltip feedback
+    showTooltipFeedback(message) {
+      // Create or update feedback element
+      let feedback = document.getElementById("tooltip-feedback");
+      if (!feedback) {
+        feedback = document.createElement("div");
+        feedback.id = "tooltip-feedback";
+        feedback.className = "fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm z-50 transition-all duration-300";
+        document.body.appendChild(feedback);
+      }
+
+      feedback.textContent = message;
+      feedback.style.opacity = "1";
+      feedback.style.transform = "translate(-50%, 0)";
+
+      // Hide after 2 seconds
+      setTimeout(() => {
+        feedback.style.opacity = "0";
+        feedback.style.transform = "translate(-50%, -10px)";
+      }, 2000);
+    },
+
+    // Delete specific image from batch
+    async deleteImageFromBatch(image) {
+      try {
+        await deleteImageFromDB(image.id);
+
+        // Remove from images array
+        this.images = this.images.filter((img) => img.id !== image.id);
+
+        // Update selectedBatch
+        if (this.selectedBatch) {
+          this.selectedBatch = this.selectedBatch.filter((img) => img.id !== image.id);
+
+          // If no images left in batch, select another image or clear selection
+          if (this.selectedBatch.length === 0) {
+            if (this.images.length > 0) {
+              this.selectBatch(0);
+            } else {
+              this.selectedImage = null;
+              this.selectedBatch = null;
+            }
+          } else {
+            // Update selected image to first remaining in batch
+            this.selectedImage = this.selectedBatch[0];
+          }
         }
       } catch (error) {
         console.error("Error deleting image:", error);
@@ -791,24 +809,12 @@ function imageGenerator() {
       try {
         await clearAllImagesFromDB();
         this.images = [];
-        this.selectedImageIndex = null;
         this.selectedImage = null;
+        this.selectedBatch = null;
       } catch (error) {
         console.error("Error clearing images:", error);
         alert(`Failed to clear images: ${error.message}`);
       }
-    },
-
-    // Download current image
-    downloadImage() {
-      if (!this.selectedImage) return;
-
-      const a = document.createElement("a");
-      a.href = this.selectedImage.dataUrl;
-      a.download = this.selectedImage.filename || "nyanovel-image.png";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     },
   };
 }
@@ -816,16 +822,7 @@ function imageGenerator() {
 // Make the function available globally
 window.imageGenerator = imageGenerator;
 
-// Add theme transition styles
+// Add styles once when DOM loads
 document.addEventListener("DOMContentLoaded", () => {
-  // Add transition styles to head
-  const style = document.createElement("style");
-  style.textContent = `
-    .theme-transitioning * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
-    }
-  `;
-  document.head.appendChild(style);
-
   console.log("DOM fully loaded - NyaNovel App ready to initialize");
 });

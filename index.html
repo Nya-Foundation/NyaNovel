@@ -490,6 +490,89 @@
       </div>
     </div>
 
+    <!-- Focused Image View Modal -->
+    <div
+      class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 transition-opacity backdrop-blur-md"
+      x-show="showFocusedView"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      @click="closeFocusedView"
+    >
+      <div class="relative max-w-[95vw] max-h-[95vh] w-full h-full flex items-center justify-center" @click.stop>
+        <!-- Close button -->
+        <button @click="closeFocusedView" class="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <!-- Image with zoom controls -->
+        <div
+          class="relative w-full h-full flex items-center justify-center"
+          x-data="{ 
+            zoom: 1, 
+            panX: 0, 
+            panY: 0, 
+            isDragging: false, 
+            lastX: 0, 
+            lastY: 0,
+            zoomIn() { this.zoom = Math.min(this.zoom * 1.5, 5); },
+            zoomOut() { this.zoom = Math.max(this.zoom / 1.5, 0.1); },
+            resetZoom() { this.zoom = 1; this.panX = 0; this.panY = 0; }
+          }"
+        >
+          <!-- Zoom controls -->
+          <div class="absolute top-4 left-4 z-10 flex flex-col space-y-2">
+            <button @click="zoomIn()" class="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors" title="Zoom In">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button @click="zoomOut()" class="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors" title="Zoom Out">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+              </svg>
+            </button>
+            <button @click="resetZoom()" class="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors" title="Reset">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Focused image -->
+          <template x-if="selectedBatch && focusedImageIndex !== null && selectedBatch[focusedImageIndex]">
+            <img
+              :src="selectedBatch[focusedImageIndex].dataUrl"
+              :alt="`Focused view of image ${focusedImageIndex + 1}`"
+              class="max-w-full max-h-full object-contain cursor-move select-none"
+              :style="`transform: scale(${zoom}) translate(${panX}px, ${panY}px); transition: transform 0.1s ease-out;`"
+              @mousedown="isDragging = true; lastX = $event.clientX; lastY = $event.clientY"
+              @mousemove="if(isDragging) { panX += ($event.clientX - lastX) / zoom; panY += ($event.clientY - lastY) / zoom; lastX = $event.clientX; lastY = $event.clientY; }"
+              @mouseup="isDragging = false"
+              @mouseleave="isDragging = false"
+              @wheel.prevent="$event.deltaY < 0 ? zoomIn() : zoomOut()"
+              draggable="false"
+            />
+          </template>
+
+          <!-- Image info overlay -->
+          <div class="absolute bottom-4 left-4 bg-black/70 text-white p-3 rounded-lg">
+            <template x-if="selectedBatch && focusedImageIndex !== null">
+              <div class="text-sm">
+                <p class="font-medium" x-text="`Image ${focusedImageIndex + 1} of ${selectedBatch.length}`"></p>
+                <p class="text-gray-300 text-xs mt-1" x-text="`Zoom: ${Math.round(zoom * 100)}%`"></p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="min-h-screen flex flex-col">
       <!-- Header -->
@@ -589,208 +672,22 @@
 
               <div class="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2 mt-4">
                 <!-- Basic Settings Tab -->
-                <div x-show="activeSettingsTab === 'basic'" class="space-y-4">
-                  <!-- Prompt Section -->
-                  <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="prompt">Prompt</label>
-                    <textarea
-                      id="prompt"
-                      rows="3"
-                      x-model="generationSettings.prompt"
-                      @input="autoResizeTextarea($event.target)"
-                      class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                      placeholder="1girl, blue hair, cute, anime style"
-                    ></textarea>
-                  </div>
-
-                  <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negativePrompt">Undesired Content</label>
-                    <textarea
-                      id="negativePrompt"
-                      rows="2"
-                      x-model="generationSettings.negativePrompt"
-                      @input="autoResizeTextarea($event.target)"
-                      class="w-full px-3 py-2 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                      placeholder="nsfw, lowres, bad anatomy, bad hands"
-                    ></textarea>
-                  </div>
-
-                  <!-- Quality Tags & UC Preset -->
-                  <div class="space-y-3 mt-3 p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-secondary)]">
-                    <div class="flex items-center">
-                      <input id="qualityTagsBasic" type="checkbox" x-model="generationSettings.qualityToggle" class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]" />
-                      <label for="qualityTagsBasic" class="ml-2 text-sm text-[var(--text-secondary)]"> Apply Quality Tags </label>
-                    </div>
-                    <div>
-                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="ucPresetBasic">Undesired Content Preset</label>
-                      <div class="relative">
-                        <select
-                          id="ucPresetBasic"
-                          x-model.number="generationSettings.ucPreset"
-                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                        >
-                          <option value="0">Heavy</option>
-                          <option value="1">Light</option>
-                          <option value="2">None</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Model & Resolution -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="model">Model</label>
-                      <div class="relative">
-                        <select
-                          id="model"
-                          x-model="generationSettings.model"
-                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                        >
-                          <option value="nai-diffusion-4-5-full">✨NAI Diffusion V4.5 Full</option>
-                          <option value="nai-diffusion-4-5-curated">NAI Diffusion V4.5 Curated</option>
-                          <option value="nai-diffusion-4-full" selected>NAI Diffusion V4 Full</option>
-                          <option value="nai-diffusion-4-curated-preview">NAI Diffusion V4 Curated</option>
-                          <option value="nai-diffusion-3">NAI Diffusion Anime V3</option>
-                          <option value="nai-diffusion-furry">NAI Diffusion Furry V3</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="resolution">Resolution</label>
-                      <div class="relative">
-                        <select
-                          id="resolution"
-                          x-model="generationSettings.resPreset"
-                          class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                        >
-                          <option value="normal_portrait">✨Normal Portrait (832x1216)</option>
-                          <option value="normal_landscape">✨Normal Landscape (1216x832)</option>
-                          <option value="normal_square">✨Normal Square (1024x1024)</option>
-                          <option value="small_portrait">Small Portrait (512x768)</option>
-                          <option value="small_landscape">Small Landscape (768x512)</option>
-                          <option value="small_square">Small Square (640x640)</option>
-                          <option value="large_portrait">Large Portrait (1024x1536)</option>
-                          <option value="large_landscape">Large Landscape (1536x1024)</option>
-                          <option value="large_square">Large Square (1472x1472)</option>
-                          <option value="wallpaper_portrait">Wallpaper Portrait (1088x1920)</option>
-                          <option value="wallpaper_landscape">Wallpaper Landscape (1920x1088)</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Basic Settings -->
-                  <div>
-                    <div class="flex justify-between items-center mb-2">
-                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="steps">Steps</label>
-                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.steps"></span>
-                    </div>
-                    <input id="steps" type="range" min="10" max="50" x-model.number="generationSettings.steps" class="w-full" />
-                  </div>
-
-                  <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="seed">Seed (-1 for random)</label>
-                    <div class="relative w-full flex items-center">
-                      <div class="absolute left-2 seed-icon-container pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                          />
-                        </svg>
-                      </div>
-                      <input
-                        id="seed"
-                        type="number"
-                        min="-1"
-                        x-model.number="generationSettings.seed"
-                        class="w-full pl-8 pr-4 py-2 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Batch Size Buttons -->
-                  <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium">Batch Size</label>
-                    <div class="flex space-x-2">
-                      <button
-                        @click="generationSettings.nSamples = 1"
-                        :class="{
-                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 1,
-                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 1
-                            }"
-                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
-                      >
-                        1
-                      </button>
-                      <button
-                        @click="generationSettings.nSamples = 2"
-                        :class="{
-                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 2,
-                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 2
-                            }"
-                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
-                      >
-                        2
-                      </button>
-                      <button
-                        @click="generationSettings.nSamples = 3"
-                        :class="{
-                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 3,
-                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 3
-                            }"
-                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
-                      >
-                        3
-                      </button>
-                      <button
-                        @click="generationSettings.nSamples = 4"
-                        :class="{
-                              'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-[var(--text-on-primary)] shadow-[var(--shadow-button)]': generationSettings.nSamples === 4,
-                              'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border border-[var(--border-input)]': generationSettings.nSamples !== 4
-                            }"
-                        class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-[var(--transition-fast)]"
-                      >
-                        4
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Sampler -->
-                  <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="samplers">Sampler</label>
+                <div x-show="activeSettingsTab === 'basic'" class="space-y-5">
+                  <!-- AI Model Selection -->
+                  <div class="space-y-3">
+                    <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50 mb-3">AI Model</h3>
                     <div class="relative">
                       <select
-                        id="samplers"
-                        x-model="generationSettings.sampler"
-                        class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
+                        id="model-basic"
+                        x-model="generationSettings.model"
+                        class="w-full px-4 py-3 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
                       >
-                        <option value="k_euler">✨Euler</option>
-                        <option value="k_euler_ancestral">Euler Ancestral</option>
-                        <option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
-                        <option value="k_dpmpp_2m">DPM++ 2M</option>
-                        <option value="k_dpmpp_sde">DPM++ SDE</option>
-                        <option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option>
-                        <option value="ddim">DDIM</option>
+                        <option value="nai-diffusion-4-5-full">✨ NAI Diffusion V4.5 Full</option>
+                        <option value="nai-diffusion-4-5-curated">NAI Diffusion V4.5 Curated</option>
+                        <option value="nai-diffusion-4-full" selected>NAI Diffusion V4 Full</option>
+                        <option value="nai-diffusion-4-curated-preview">NAI Diffusion V4 Curated</option>
+                        <option value="nai-diffusion-3">NAI Diffusion Anime V3</option>
+                        <option value="nai-diffusion-furry">NAI Diffusion Furry V3</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -799,12 +696,330 @@
                       </div>
                     </div>
                   </div>
+
+                  <!-- Prompt Section -->
+                  <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50 mb-3">Prompts</h3>
+
+                    <div class="space-y-4">
+                      <div>
+                        <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="prompt">Describe what you want to create</label>
+                        <textarea
+                          id="prompt"
+                          rows="4"
+                          x-model="generationSettings.prompt"
+                          @input="autoResizeTextarea($event.target)"
+                          class="w-full px-4 py-3 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base placeholder-[var(--text-tertiary)]"
+                          placeholder="1girl, blue hair, cute, anime style, detailed face, beautiful eyes..."
+                        ></textarea>
+                      </div>
+
+                      <div>
+                        <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negative_prompt">What to avoid in the image</label>
+                        <textarea
+                          id="negative_prompt"
+                          rows="2"
+                          x-model="generationSettings.negative_prompt"
+                          @input="autoResizeTextarea($event.target)"
+                          class="w-full px-4 py-3 border rounded-xl resize-vertical text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base placeholder-[var(--text-tertiary)]"
+                          placeholder="lowres, bad anatomy, bad hands, text, error, missing fingers..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Resolution Settings -->
+                  <div class="space-y-4">
+                    <div class="flex items-center mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                        />
+                      </svg>
+                      <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50">Resolution</h3>
+                    </div>
+
+                    <div
+                      x-data="{ 
+                      useCustomRes: false,
+                      syncResolution() {
+                        if (!this.useCustomRes) {
+                          const preset = $data.generationSettings.resPreset;
+                          const resolutionMap = {
+                            'normal_portrait': [832, 1216],
+                            'normal_landscape': [1216, 832],
+                            'normal_square': [1024, 1024],
+                            'small_portrait': [512, 768],
+                            'small_landscape': [768, 512],
+                            'small_square': [640, 640],
+                            'large_portrait': [1024, 1536],
+                            'large_landscape': [1536, 1024],
+                            'large_square': [1472, 1472],
+                            'wallpaper_portrait': [1088, 1920],
+                            'wallpaper_landscape': [1920, 1088]
+                          };
+                          if (resolutionMap[preset]) {
+                            $data.generationSettings.width = resolutionMap[preset][0];
+                            $data.generationSettings.height = resolutionMap[preset][1];
+                          }
+                        }
+                      }
+                    }"
+                      x-init="syncResolution()"
+                    >
+                      <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center bg-[var(--bg-input)] rounded-lg p-1 border border-[var(--border-input)]">
+                          <button
+                            @click="useCustomRes = false; syncResolution()"
+                            :class="{'bg-[var(--color-primary-500)] text-white shadow-sm': !useCustomRes, 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]': useCustomRes}"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200"
+                          >
+                            Presets
+                          </button>
+                          <button
+                            @click="useCustomRes = true"
+                            :class="{'bg-[var(--color-primary-500)] text-white shadow-sm': useCustomRes, 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]': !useCustomRes}"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200"
+                          >
+                            Custom
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Preset Resolution Selector -->
+                      <div x-show="!useCustomRes" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="relative">
+                          <select
+                            x-model="generationSettings.resPreset"
+                            @change="syncResolution()"
+                            class="w-full px-4 py-3 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                          >
+                            <option value="normal_portrait">✨ Normal Portrait (832×1216)</option>
+                            <option value="normal_landscape">✨ Normal Landscape (1216×832)</option>
+                            <option value="normal_square">✨ Normal Square (1024×1024)</option>
+                            <option value="small_portrait">Small Portrait (512×768)</option>
+                            <option value="small_landscape">Small Landscape (768×512)</option>
+                            <option value="small_square">Small Square (640×640)</option>
+                            <option value="large_portrait">Large Portrait (1024×1536)</option>
+                            <option value="large_landscape">Large Landscape (1536×1024)</option>
+                            <option value="large_square">Large Square (1472×1472)</option>
+                            <option value="wallpaper_portrait">Wallpaper Portrait (1088×1920)</option>
+                            <option value="wallpaper_landscape">Wallpaper Landscape (1920×1088)</option>
+                          </select>
+                          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Custom Resolution Inputs -->
+                      <div x-show="useCustomRes" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                          <div>
+                            <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Width</label>
+                            <input
+                              type="number"
+                              min="64"
+                              max="2048"
+                              step="64"
+                              x-model.number="generationSettings.width"
+                              class="w-full px-4 py-3 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                              placeholder="832"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Height</label>
+                            <input
+                              type="number"
+                              min="64"
+                              max="2048"
+                              step="64"
+                              x-model.number="generationSettings.height"
+                              class="w-full px-4 py-3 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                              placeholder="1216"
+                            />
+                          </div>
+                        </div>
+                        <div class="p-3 rounded-lg bg-[var(--color-info)]/10 border border-[var(--color-info)]/20">
+                          <p class="text-xs text-[var(--color-info)] flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Dimensions must be multiples of 64. Higher resolutions consume more resources.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Batch Generation -->
+                  <div class="space-y-4">
+                    <div class="flex items-center mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                        />
+                      </svg>
+                      <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50">Batch Generation</h3>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-3">
+                      <template x-for="num in [1,2,3,4]" :key="num">
+                        <button
+                          @click="generationSettings.n_samples = num"
+                          :class="{
+                            'bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] text-white shadow-md border-[var(--color-primary-500)]': generationSettings.n_samples === num,
+                            'bg-[var(--bg-input)] hover:bg-[var(--color-neutral-200)] dark:hover:bg-[var(--color-neutral-700)] text-[var(--text-secondary)] border-[var(--border-input)]': generationSettings.n_samples !== num
+                          }"
+                          class="py-2 px-3.5 rounded-lg text-base font-semibold transition-all duration-200 transform hover:scale-105 border-2"
+                        >
+                          <span x-text="num"></span>
+                        </button>
+                      </template>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-[var(--color-info)]/10 border border-[var(--color-info)]/20">
+                      <p class="text-xs text-[var(--color-info)] flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Generate multiple variations in one request. More images = longer generation time.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Generation Quality -->
+                  <div class="space-y-4">
+                    <div class="flex items-center mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50">Generation Quality</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                      <!-- Steps Slider -->
+                      <div>
+                        <div class="flex justify-between items-center mb-3">
+                          <label class="block text-[var(--text-secondary)] text-sm font-medium" for="steps">Generation Steps</label>
+                          <span class="text-sm text-[var(--text-tertiary)] font-mono bg-[var(--bg-tertiary)] px-2 py-1 rounded" x-text="generationSettings.steps"></span>
+                        </div>
+                        <input id="steps" type="range" min="10" max="50" x-model.number="generationSettings.steps" class="w-full h-2 bg-[var(--bg-tertiary)] rounded-lg appearance-none cursor-pointer slider" />
+                        <div class="flex justify-between text-xs text-[var(--text-tertiary)] mt-1">
+                          <span>10 (Fast)</span>
+                          <span>50 (High Quality)</span>
+                        </div>
+                      </div>
+
+                      <!-- Sampler Selection -->
+                      <div>
+                        <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="samplers">Sampling Method</label>
+                        <div class="relative">
+                          <select
+                            id="samplers"
+                            x-model="generationSettings.sampler"
+                            class="w-full px-4 py-3 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                          >
+                            <option value="k_euler_ancestral">✨ Euler Ancestral (Recommended)</option>
+                            <option value="k_euler">Euler</option>
+                            <option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
+                            <option value="k_dpmpp_2m">DPM++ 2M</option>
+                            <option value="k_dpmpp_sde">DPM++ SDE</option>
+                            <option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option>
+                            <option value="ddim">DDIM</option>
+                          </select>
+                          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Seed Input -->
+                      <div>
+                        <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="seed">Seed (Random: -1)</label>
+                        <div class="relative">
+                          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                              />
+                            </svg>
+                          </div>
+                          <input
+                            id="seed"
+                            type="number"
+                            min="-1"
+                            x-model.number="generationSettings.seed"
+                            class="w-full pl-12 pr-4 py-3 border rounded-xl text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                            placeholder="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Quality Enhancement -->
+                  <div class="space-y-4">
+                    <div class="flex items-center mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-[var(--color-primary-500)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 class="text-lg font-semibold text-primary-950 dark:text-primary-50">Quality Enhancement</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                      <div class="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)]">
+                        <div>
+                          <label for="qualityTagsBasic" class="text-sm font-medium text-[var(--text-primary)] cursor-pointer">Apply Quality Tags</label>
+                          <p class="text-xs text-[var(--text-tertiary)] mt-1">Automatically enhance image quality</p>
+                        </div>
+                        <input
+                          id="qualityTagsBasic"
+                          type="checkbox"
+                          x-model="generationSettings.qualityToggle"
+                          class="w-5 h-5 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)] cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="ucPresetBasic">Undesired Content Preset</label>
+                        <div class="relative">
+                          <select
+                            id="ucPresetBasic"
+                            x-model.number="generationSettings.ucPreset"
+                            class="w-full px-4 py-3 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)] text-base"
+                          >
+                            <option value="0">Heavy - Maximum filtering</option>
+                            <option value="1">Light - Balanced filtering</option>
+                            <option value="2">None - No additional filtering</option>
+                          </select>
+                          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Advanced Settings Tab -->
                 <div x-show="activeSettingsTab === 'advanced'" class="space-y-5">
-                  <!-- Increased space-y -->
-                  <!-- Prompt Guidance (formerly CFG Scale) -->
+                  <!-- Prompt Guidance -->
                   <div>
                     <div class="flex justify-between items-center mb-2">
                       <label class="block text-[var(--text-secondary)] text-sm font-medium" for="scale">Prompt Guidance</label>
@@ -813,22 +1028,22 @@
                     <input id="scale" type="range" min="1" max="15" step="0.5" x-model.number="generationSettings.scale" class="w-full" />
                   </div>
 
-                  <!-- Prompt Guidance Rescale (formerly CFG Rescale) -->
+                  <!-- Prompt Guidance Rescale -->
                   <div>
                     <div class="flex justify-between items-center mb-2">
-                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="cfgRescale">Prompt Guidance Rescale</label>
-                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.cfgRescale"></span>
+                      <label class="block text-[var(--text-secondary)] text-sm font-medium" for="cfg_rescale">Prompt Guidance Rescale</label>
+                      <span class="text-sm text-[var(--text-tertiary)] font-mono" x-text="generationSettings.cfg_rescale"></span>
                     </div>
-                    <input id="cfgRescale" type="range" min="0" max="1" step="0.05" x-model.number="generationSettings.cfgRescale" class="w-full" />
+                    <input id="cfg_rescale" type="range" min="0" max="1" step="0.05" x-model.number="generationSettings.cfg_rescale" class="w-full" />
                   </div>
 
                   <!-- Noise Schedule -->
                   <div>
-                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="noiseSchedule">Noise Schedule</label>
+                    <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="noise_schedule">Noise Schedule</label>
                     <div class="relative">
                       <select
-                        id="noiseSchedule"
-                        x-model="generationSettings.noiseSchedule"
+                        id="noise_schedule"
+                        x-model="generationSettings.noise_schedule"
                         class="w-full px-3 py-2 border rounded-xl appearance-none text-[var(--text-primary)] border-[var(--border-input)] bg-[var(--bg-input)] focus:ring-2 ring-offset-0 focus:ring-[var(--color-primary-300)] dark:focus:ring-[var(--color-primary-600)]"
                       >
                         <option value="native">Native</option>
@@ -849,12 +1064,12 @@
                     <!-- Dynamic Thresholding -->
                     <div class="flex items-center">
                       <input
-                        id="dynamicThresholding"
+                        id="dynamic_thresholding"
                         type="checkbox"
-                        x-model="generationSettings.dynamicThresholding"
+                        x-model="generationSettings.dynamic_thresholding"
                         class="w-4 h-4 text-[var(--color-primary-500)] border-[var(--border-input)] rounded focus:ring-[var(--color-primary-400)]"
                       />
-                      <label for="dynamicThresholding" class="ml-2 text-sm text-[var(--text-secondary)]"> Dynamic Thresholding </label>
+                      <label for="dynamic_thresholding" class="ml-2 text-sm text-[var(--text-secondary)]"> Dynamic Thresholding </label>
                     </div>
 
                     <!-- Auto SMEA -->
@@ -870,7 +1085,7 @@
                       <h3 class="text-md font-semibold text-primary-950 dark:text-primary-50">Vibe Transfer</h3>
                       <button
                         @click="clearAllReferenceImages"
-                        x-show="generationSettings.referenceImageMultiple && generationSettings.referenceImageMultiple.length > 0"
+                        x-show="generationSettings.reference_image_multiple && generationSettings.reference_image_multiple.length > 0"
                         class="px-2 py-1 text-xs bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg hover:bg-[var(--color-error)]/20 transition-colors flex items-center"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -901,8 +1116,8 @@
                     </div>
 
                     <!-- Reference Images Gallery with Settings -->
-                    <div x-show="generationSettings.referenceImageMultiple && generationSettings.referenceImageMultiple.length > 0" class="space-y-4 mt-4">
-                      <template x-for="(refImage, index) in generationSettings.referenceImageMultiple" :key="index">
+                    <div x-show="generationSettings.reference_image_multiple && generationSettings.reference_image_multiple.length > 0" class="space-y-4 mt-4">
+                      <template x-for="(refImage, index) in generationSettings.reference_image_multiple" :key="index">
                         <div class="p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)]">
                           <div class="flex items-start space-x-3">
                             <!-- Image Thumbnail -->
@@ -920,16 +1135,16 @@
                               <div>
                                 <div class="flex justify-between items-center mb-1">
                                   <label class="text-xs text-[var(--text-tertiary)]">Reference Strength</label>
-                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.referenceStrengthMultiple[index].toFixed(2)"></span>
+                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.reference_strength_multiple[index].toFixed(2)"></span>
                                 </div>
-                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.referenceStrengthMultiple[index]" />
+                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.reference_strength_multiple[index]" />
                               </div>
                               <div>
                                 <div class="flex justify-between items-center mb-1">
                                   <label class="text-xs text-[var(--text-tertiary)]">Information Extracted</label>
-                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.referenceInformationExtractedMultiple[index].toFixed(2)"></span>
+                                  <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="generationSettings.reference_information_extracted_multiple[index].toFixed(2)"></span>
                                 </div>
-                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.referenceInformationExtractedMultiple[index]" />
+                                <input type="range" min="0" max="1" step="0.01" class="w-full h-1.5" x-model.number="generationSettings.reference_information_extracted_multiple[index]" />
                               </div>
                             </div>
                           </div>
@@ -938,7 +1153,7 @@
                     </div>
 
                     <!-- Empty state -->
-                    <div x-show="!generationSettings.referenceImageMultiple || generationSettings.referenceImageMultiple.length === 0" class="mt-2 text-center p-3 bg-[var(--bg-input)]/50 rounded-lg">
+                    <div x-show="!generationSettings.reference_image_multiple || generationSettings.reference_image_multiple.length === 0" class="mt-2 text-center p-3 bg-[var(--bg-input)]/50 rounded-lg">
                       <p class="text-xs text-[var(--text-tertiary)]">No reference images added yet</p>
                     </div>
                   </div>
@@ -988,9 +1203,9 @@
                             </div>
 
                             <div>
-                              <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negativePrompt">Undesired Content</label>
+                              <label class="block text-[var(--text-secondary)] mb-2 text-sm font-medium" for="negative_prompt">Undesired Content</label>
                               <textarea
-                                id="negativePrompt"
+                                id="negative_prompt"
                                 rows="2"
                                 x-model="character.uc"
                                 @input="autoResizeTextarea($event.target)"
@@ -1087,47 +1302,24 @@
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
-                  Image Preview
+                  <span x-text="selectedBatch && selectedBatch.length > 1 ? `Image Preview (${selectedBatch.length} images)` : 'Image Preview'"></span>
                 </h2>
 
-                <!-- Action Buttons -->
-                <div class="flex items-center space-x-2">
-                  <template x-if="selectedImage">
-                    <div class="flex space-x-2">
-                      <button @click="downloadImage" class="action-button bg-[var(--color-primary-500)] hover:bg-[var(--color-primary-600)]">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Download
-                      </button>
-                      <button @click="showDirectorTools = true" class="action-button bg-[var(--color-secondary-500)] hover:bg-[var(--color-secondary-600)]">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        Edit
-                      </button>
-                      <button @click="deleteCurrentImage" class="action-button bg-[var(--color-error)] hover:bg-[var(--color-error)]/80">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  </template>
+                <!-- Batch action buttons -->
+                <div class="flex items-center space-x-2" x-show="selectedBatch && selectedBatch.length > 0">
+                  <button @click="clearAllImages" class="action-button bg-[var(--color-error)] hover:bg-[var(--color-error)]/80">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear All
+                  </button>
                 </div>
               </div>
 
               <div
                 class="flex-grow rounded-xl flex items-center justify-center relative image-preview-container shadow-inner bg-[var(--bg-tertiary)] bg-[radial-gradient(var(--color-neutral-200)_1px,transparent_1px)] dark:bg-[radial-gradient(var(--color-neutral-700)_1px,transparent_1px)] bg-size-[20px_20px] border border-[var(--border-secondary)]"
               >
-                <div x-show="isGenerating" class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl">
-                  <div class="flex flex-col items-center">
-                    <div class="animate-gradient-spin rounded-full h-16 w-16 border-t-2 border-b-2 mb-4"></div>
-                    <p class="text-[var(--text-on-primary)] font-medium">Generating your image...</p>
-                  </div>
-                </div>
-
-                <template x-if="!selectedImage && !isGenerating">
+                <template x-if="!selectedBatch && !isGenerating">
                   <div class="text-center p-8 text-[var(--text-tertiary)] max-w-md backdrop-blur-sm bg-[var(--bg-tertiary)]/50 rounded-2xl shadow-sm border border-[var(--border-secondary)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto mb-4 text-[var(--text-tertiary)] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
@@ -1142,8 +1334,228 @@
                   </div>
                 </template>
 
-                <template x-if="selectedImage && !isGenerating">
-                  <img :src="selectedImage.dataUrl" alt="Generated image" class="max-h-full max-w-full object-contain rounded-lg pop-in drop-shadow-lg" />
+                <!-- Multi-image batch display -->
+                <template x-if="selectedBatch && selectedBatch.length > 0 && !isGenerating">
+                  <div class="w-full h-full p-4 overflow-hidden">
+                    <div
+                      class="w-full h-full grid gap-3"
+                      :class="{
+                        'grid-cols-1 grid-rows-1': selectedBatch.length === 1,
+                        'grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1': selectedBatch.length === 2,
+                        'grid-cols-1 grid-rows-3 sm:grid-cols-2 sm:grid-rows-2 lg:grid-cols-3 lg:grid-rows-1': selectedBatch.length === 3,
+                        'grid-cols-2 grid-rows-2': selectedBatch.length === 4
+                      }"
+                    >
+                      <template x-for="(image, index) in selectedBatch" :key="image.id">
+                        <div class="relative group w-full h-full min-h-0 min-w-0">
+                          <!-- Image container that fills the grid cell -->
+                          <div
+                            class="relative w-full h-full rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border-2 border-transparent hover:border-[var(--color-primary-400)] bg-[var(--bg-input)] flex items-center justify-center"
+                            @click="focusImage(index)"
+                          >
+                            <img :src="image.dataUrl" :alt="`Generated image ${index + 1}`" class="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
+
+                            <!-- Hover overlay background -->
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 rounded-lg"></div>
+
+                            <!-- Click to focus indicator -->
+                            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div class="bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                </svg>
+                                Focus
+                              </div>
+                            </div>
+
+                            <!-- Overlay Action Icons - centered at bottom -->
+                            <div class="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                              <div class="flex justify-center space-x-1">
+                                <button
+                                  @click.stop="downloadImageFromBatch(image)"
+                                  class="p-2.5 bg-black/80 hover:bg-[var(--color-primary-500)] text-white rounded-full transition-all duration-200 transform hover:scale-110 backdrop-blur-sm tooltip-container"
+                                  title="Download Image"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  <span class="tooltip-text">Download</span>
+                                </button>
+                                <button
+                                  @click.stop="copyImageToClipboard(image)"
+                                  class="p-2.5 bg-black/80 hover:bg-[var(--color-info)] text-white rounded-full transition-all duration-200 transform hover:scale-110 backdrop-blur-sm tooltip-container"
+                                  title="Copy Image to Clipboard"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                  <span class="tooltip-text">Copy Image</span>
+                                </button>
+                                <button
+                                  @click.stop="copySeedFromImage(image)"
+                                  class="p-2.5 bg-black/80 hover:bg-[var(--color-accent-500)] text-white rounded-full transition-all duration-200 transform hover:scale-110 backdrop-blur-sm tooltip-container"
+                                  title="Copy Seed to Settings"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                                    />
+                                  </svg>
+                                  <span class="tooltip-text">Copy Seed</span>
+                                </button>
+                                <button
+                                  @click.stop="selectedImage = image; showDirectorTools = true"
+                                  class="p-2.5 bg-black/80 hover:bg-[var(--color-secondary-500)] text-white rounded-full transition-all duration-200 transform hover:scale-110 backdrop-blur-sm tooltip-container"
+                                  title="Edit Image"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                  <span class="tooltip-text">Edit</span>
+                                </button>
+                                <button
+                                  @click.stop="deleteImageFromBatch(image)"
+                                  class="p-2.5 bg-black/80 hover:bg-[var(--color-error)] text-white rounded-full transition-all duration-200 transform hover:scale-110 backdrop-blur-sm tooltip-container"
+                                  title="Delete Image"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  <span class="tooltip-text">Delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Streaming preview during generation -->
+                <template x-if="selectedBatch && selectedBatch.length > 0 && isGenerating">
+                  <div class="w-full h-full p-4 overflow-hidden">
+                    <div
+                      class="w-full h-full grid gap-3"
+                      :class="{
+                        'grid-cols-1 grid-rows-1': selectedBatch.length === 1,
+                        'grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1': selectedBatch.length === 2,
+                        'grid-cols-1 grid-rows-3 sm:grid-cols-2 sm:grid-rows-2 lg:grid-cols-3 lg:grid-rows-1': selectedBatch.length === 3,
+                        'grid-cols-2 grid-rows-2': selectedBatch.length === 4
+                      }"
+                    >
+                      <template x-for="(image, index) in selectedBatch" :key="index">
+                        <div class="relative w-full h-full min-h-0 min-w-0">
+                          <!-- Streaming image container -->
+                          <div class="relative w-full h-full rounded-lg overflow-hidden bg-[var(--bg-input)] flex items-center justify-center border-2 border-[var(--color-primary-400)]/30">
+                            <!-- Show intermediate image if available -->
+                            <template x-if="image.dataUrl">
+                              <img :src="image.dataUrl" :alt="`Generating image ${index + 1}`" class="max-w-full max-h-full object-contain rounded-lg shadow-sm opacity-90" />
+                            </template>
+
+                            <!-- Show placeholder while waiting for first intermediate -->
+                            <template x-if="!image.dataUrl">
+                              <div class="flex flex-col items-center justify-center text-[var(--text-tertiary)] p-4 h-full">
+                                <!-- Simple spinner -->
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-[var(--color-primary-200)] dark:border-[var(--color-primary-800)] border-t-[var(--color-primary-500)] mb-4"></div>
+
+                                <!-- Sample information -->
+                                <div class="text-center space-y-2">
+                                  <p class="text-lg font-semibold text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]" x-text="`Sample ${index + 1}`"></p>
+                                  <p class="text-sm text-[var(--text-secondary)]">Initializing...</p>
+                                </div>
+                              </div>
+                            </template>
+
+                            <!-- Step indicator overlay -->
+                            <div class="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                              <template x-if="image.stepIndex !== undefined && image.dataUrl">
+                                <span x-text="`Step ${image.stepIndex + 1}`"></span>
+                              </template>
+                              <template x-if="image.stepIndex === undefined || !image.dataUrl">
+                                <span class="animate-pulse">Loading...</span>
+                              </template>
+                            </div>
+
+                            <!-- Progress indicator when generating -->
+                            <template x-if="image.dataUrl && image.progress !== undefined">
+                              <div class="absolute bottom-2 left-2 right-2">
+                                <div class="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
+                                  <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs text-white font-medium">Generating</span>
+                                    <span class="text-xs text-white/80" x-text="`${image.progress}%`"></span>
+                                  </div>
+                                  <div class="w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-[var(--color-primary-400)] to-[var(--color-accent-400)] rounded-full transition-all duration-300 ease-out" :style="`width: ${image.progress}%`"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+
+                            <!-- Intermediate indicator -->
+                            <div class="absolute top-2 right-2 bg-[var(--color-primary-500)]/80 text-white px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                              <template x-if="image.dataUrl">
+                                <span class="animate-pulse">Live Preview</span>
+                              </template>
+                              <template x-if="!image.dataUrl">
+                                <span class="animate-pulse">Waiting...</span>
+                              </template>
+                            </div>
+
+                            <!-- Processing overlay -->
+                            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 rounded-lg"></div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Generation progress info -->
+                    <div class="mt-4 p-4 rounded-lg bg-[var(--bg-tertiary)]/80 backdrop-blur-sm border border-[var(--border-secondary)]">
+                      <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                          <div class="animate-spin rounded-full h-4 w-4 border-2 border-[var(--color-primary-200)] dark:border-[var(--color-primary-800)] border-t-[var(--color-primary-500)] mr-3"></div>
+                          <span class="text-sm font-medium text-[var(--text-primary)]">Generating images in real-time...</span>
+                        </div>
+                        <div class="text-xs text-[var(--text-tertiary)]">
+                          <span x-text="`${selectedBatch.length} sample${selectedBatch.length > 1 ? 's' : ''}`"></span>
+                        </div>
+                      </div>
+
+                      <!-- Overall progress bar -->
+                      <div class="space-y-2">
+                        <div class="flex justify-between text-xs text-[var(--text-tertiary)]">
+                          <span>Overall Progress</span>
+                          <span x-text="`${Math.round(selectedBatch.filter(img => img.dataUrl).length / selectedBatch.length * 100)}%`"></span>
+                        </div>
+                        <div class="w-full bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)] rounded-full h-2 overflow-hidden">
+                          <div
+                            class="h-full bg-gradient-to-r from-[var(--color-primary-500)] to-[var(--color-accent-500)] rounded-full transition-all duration-500 ease-out"
+                            :style="`width: ${(selectedBatch.filter(img => img.dataUrl).length / selectedBatch.length * 100)}%`"
+                          ></div>
+                        </div>
+                      </div>
+
+                      <!-- Status indicators for each sample -->
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        <template x-for="(sample, idx) in selectedBatch" :key="idx">
+                          <div class="flex items-center text-xs">
+                            <div
+                              class="w-2 h-2 rounded-full mr-1.5 transition-colors duration-300"
+                              :class="{
+                                'bg-[var(--color-success)]': sample.dataUrl && sample.stepIndex !== undefined,
+                                'bg-[var(--color-warning)] animate-pulse': !sample.dataUrl,
+                                'bg-[var(--color-info)]': sample.dataUrl && sample.stepIndex === undefined
+                              }"
+                            ></div>
+                            <span class="text-[var(--text-tertiary)]" x-text="`S${idx + 1}`"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
                 </template>
               </div>
 
@@ -1233,14 +1645,16 @@
                     </div>
                   </template>
 
-                  <template x-for="(image, index) in images" :key="image.id">
-                    <div class="relative group cursor-pointer" @click="selectImage(index)" :class="{'selected-image-glow z-10': selectedImageIndex === index}">
+                  <template x-for="(galleryImage, galleryIndex) in getGroupedGalleryImages()" :key="galleryImage.id">
+                    <div class="relative group cursor-pointer" @click="selectBatch(images.findIndex(img => img.id === galleryImage.id))" :class="{'selected-image-glow z-10': selectedImage && selectedImage.batchId === galleryImage.batchId}">
                       <img
-                        :src="image.dataUrl"
-                        :alt="`Generated image ${index + 1}`"
+                        :src="galleryImage.dataUrl"
+                        :alt="`Generated image batch ${galleryIndex + 1}`"
                         class="w-full h-auto object-cover rounded-xl transition-all border-2 border-transparent hover:border-primary-400 dark:hover:border-primary-500"
-                        :class="{'border-primary-500 dark:border-primary-400': selectedImageIndex === index}"
+                        :class="{'border-primary-500 dark:border-primary-400': selectedImage && selectedImage.batchId === galleryImage.batchId}"
                       />
+                      <!-- Batch indicator -->
+                      <div x-show="galleryImage.batchSize > 1" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-medium" x-text="`×${galleryImage.batchSize}`"></div>
                       <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"></div>
                     </div>
                   </template>
