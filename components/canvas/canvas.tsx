@@ -212,9 +212,19 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
             {/* 3.1: no text-accent here — accent is reserved for the primary action. */}
             <Wand2 className="size-4" /> Director
           </button>
-          <ActionBtn label="Use these settings" onClick={() => restoreSettings(img.settings)}>
-            <RotateCcw />
-          </ActionBtn>
+          {/* Promoted from a bare 17px glyph in a row of five identical icons — reuse is the whole
+              point of storing per-image param snapshots. */}
+          <button
+            type="button"
+            onClick={() => restoreSettings(img.settings)}
+            className={cn(
+              "mr-1 inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-surface-2 px-3 text-[13px] font-semibold text-fg transition-colors duration-instant hover:bg-surface-3",
+              focusRing,
+              "focus-visible:ring-offset-surface",
+            )}
+          >
+            <RotateCcw className="size-4" /> Reuse settings
+          </button>
           <ActionBtn label="Copy seed to settings" onClick={() => patchSettings({ seed: img.seed })}>
             <Hash />
           </ActionBtn>

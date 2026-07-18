@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RotateCcw } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { downloadDataUrl } from "@/lib/image-actions";
+import { useFocusTrap, useDelayedUnmount } from "@/lib/use-overlay";
 import { cn } from "@/lib/utils";
 
 export function Lightbox() {
   const batch = useStore((s) => s.selectedBatch);
   const focusedIndex = useStore((s) => s.focusedIndex);
   const setUI = useStore((s) => s.setUI);
+  const restoreSettings = useStore((s) => s.restoreSettings);
   const [zoom, setZoom] = useState(1);
 
   const open = focusedIndex !== null && !!batch && focusedIndex < batch.length;
+  const mounted = useDelayedUnmount(open, 160);
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   const close = () => {
     setZoom(1);
@@ -31,20 +35,36 @@ export function Lightbox() {
       if (e.key === "Escape") close();
       if (e.key === "ArrowLeft") nav(-1);
       if (e.key === "ArrowRight") nav(1);
+      // Zoom was pointer-only — the two magnifier buttons were the sole way to reach it.
+      if (e.key === "+" || e.key === "=") setZoom((z) => Math.min(4, z + 0.25));
+      if (e.key === "-") setZoom((z) => Math.max(0.5, z - 0.25));
+      if (e.key === "0") setZoom(1);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, focusedIndex, batch]);
 
-  if (!open || typeof document === "undefined" || !batch) return null;
-  const img = batch[focusedIndex!];
+  if (!mounted || typeof document === "undefined" || !batch) return null;
+  const idx = Math.min(focusedIndex ?? 0, batch.length - 1);
+  const img = batch[idx];
+  if (!img) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90" style={{ animation: "fadeIn 150ms ease-out" }}>
+    <div
+      ref={trapRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Image ${idx + 1} of ${batch.length}, seed ${img.seed}`}
+      className={cn(
+        "fixed inset-0 z-50 flex flex-col bg-black/90 outline-none transition-[opacity,transform]",
+        open ? "opacity-100 scale-100 duration-base ease-out" : "opacity-0 scale-[0.98] duration-fast ease-in",
+      )}
+    >
       <div className="flex shrink-0 items-center justify-between px-4 py-3 text-white">
         <span className="font-[family-name:var(--font-mono)] text-[12px] text-white/70">
-          {focusedIndex! + 1} / {batch.length} · seed {img.seed}
+          {idx + 1} / {batch.length} · seed {img.seed}
         </span>
         <div className="flex items-center gap-1">
           <IconBtn label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
@@ -52,6 +72,9 @@ export function Lightbox() {
           </IconBtn>
           <IconBtn label="Zoom in" onClick={() => setZoom((z) => Math.min(4, z + 0.25))}>
             <ZoomIn className="size-5" />
+          </IconBtn>
+          <IconBtn label="Reuse settings" onClick={() => restoreSettings(img.settings)}>
+            <RotateCcw className="size-5" />
           </IconBtn>
           <IconBtn label="Download" onClick={() => downloadDataUrl(img.dataUrl, img.filename)}>
             <Download className="size-5" />
@@ -73,7 +96,7 @@ export function Lightbox() {
           src={img.dataUrl}
           alt=""
           style={{ transform: `scale(${zoom})` }}
-          className="max-h-full max-w-full object-contain transition-transform duration-150"
+          className="max-h-full max-w-full object-contain transition-transform duration-base ease-out"
         />
         {batch.length > 1 && (
           <IconBtn label="Next" onClick={() => nav(1)} className="absolute right-3 top-1/2 -translate-y-1/2">

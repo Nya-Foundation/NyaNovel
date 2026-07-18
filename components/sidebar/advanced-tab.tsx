@@ -15,11 +15,11 @@ export function AdvancedTab() {
   return (
     <>
       <Section title="Guidance">
-        <Field label="Prompt guidance (CFG)">
-          <Slider min={1} max={10} step={0.1} value={s.scale} onValueChange={(v) => patch({ scale: v })} format={(v) => v.toFixed(1)} />
+        <Field hint="Higher follows the prompt more literally and leaves less room for invention. 4–7 is typical.">
+          <Slider label="Prompt guidance (CFG)" showRange min={1} max={10} step={0.1} value={s.scale} onValueChange={(v) => patch({ scale: v })} format={(v) => v.toFixed(1)} />
         </Field>
-        <Field label="Guidance rescale">
-          <Slider min={0} max={1} step={0.01} value={s.cfgRescale} onValueChange={(v) => patch({ cfgRescale: v })} format={(v) => v.toFixed(2)} />
+        <Field hint="Softens over-saturation at high guidance. Leave at 0 unless colours look burnt.">
+          <Slider label="Guidance rescale" showRange min={0} max={1} step={0.01} value={s.cfgRescale} onValueChange={(v) => patch({ cfgRescale: v })} format={(v) => v.toFixed(2)} />
         </Field>
         <Field label="Noise schedule" htmlFor="noise">
           <Select id="noise" value={s.noiseSchedule} onChange={(e) => patch({ noiseSchedule: e.target.value as typeof s.noiseSchedule })}>
@@ -36,12 +36,18 @@ export function AdvancedTab() {
         <Field>
           <SwitchRow
             label="Dynamic thresholding"
+            hint="Rescues detail lost to very high guidance. Usually off."
             checked={s.dynamicThresholding}
             onCheckedChange={(v) => patch({ dynamicThresholding: v })}
           />
         </Field>
         <Field>
-          <SwitchRow label="Auto SMEA" checked={s.autoSmea} onCheckedChange={(v) => patch({ autoSmea: v })} />
+          <SwitchRow
+            label="Auto SMEA"
+            hint="Improves coherence at large resolutions. Ignored on small sizes."
+            checked={s.autoSmea}
+            onCheckedChange={(v) => patch({ autoSmea: v })}
+          />
         </Field>
       </Section>
 

@@ -24,7 +24,7 @@ export function ToggleChip({
       type="button"
       aria-pressed={active}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-chip)] border px-3 py-1.5 text-[13px] font-medium transition-colors duration-150",
+        "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-chip)] border px-3 py-1.5 text-[13px] font-medium transition-colors duration-fast",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
         active
           ? "border-accent bg-[color-mix(in_oklab,var(--accent)_16%,transparent)] text-fg"

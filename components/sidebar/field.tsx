@@ -35,9 +35,11 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-b border-border-soft px-4 py-4 last:border-0">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{title}</h3>
+    <section className="border-b border-border-soft px-4 py-3 last:border-0">
+      <div className="mb-2 flex items-center justify-between">
+        {/* Groups must read before the fields they contain — this was the smallest text in the
+            sidebar, in the same colour role as hint copy. */}
+        <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-fg-2">{title}</h3>
         {right}
       </div>
       {children}

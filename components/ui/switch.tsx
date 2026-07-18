@@ -17,7 +17,7 @@ export function Switch({ checked, onCheckedChange, disabled, className, ...rest 
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-[var(--radius-pill)] transition-colors duration-150",
+        "relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-[var(--radius-pill)] transition-colors duration-fast",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
         "disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-accent" : "bg-surface-3",
@@ -27,7 +27,7 @@ export function Switch({ checked, onCheckedChange, disabled, className, ...rest 
     >
       <span
         className={cn(
-          "inline-block size-4 rounded-full bg-white shadow transition-transform duration-150",
+          "inline-block size-4 rounded-full bg-white shadow transition-transform duration-fast ease-standard",
           checked ? "translate-x-[19px]" : "translate-x-[3px]",
         )}
       />

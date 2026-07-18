@@ -65,6 +65,9 @@ type Store = {
 
   // ---- gallery ----
   images: GalleryImage[];
+  /** Distinguishes first-paint, genuinely empty, and IDB-unavailable — they used to render alike. */
+  galleryStatus: "loading" | "ready" | "error";
+  galleryError: string | null;
   selectedBatch: GalleryImage[] | null;
   selectedImage: GalleryImage | null;
   loadGallery: () => Promise<void>;
@@ -79,12 +82,15 @@ type Store = {
   /** Last failure, kept so the canvas can explain it after the toast fades. */
   lastError: { message: string; at: number } | null;
   abortRequested: boolean;
+  /** Wall-clock start of the current run, so waits can show elapsed time instead of a frozen ring. */
+  runStartedAt: number | null;
   generate: () => Promise<void>;
   cancelGenerate: () => void;
   clearError: () => void;
 
   // ---- director tools ----
   isDirectorProcessing: boolean;
+  directorKind: DirectorKind | null;
   runDirector: (kind: DirectorKind, opts?: DirectorOpts) => Promise<void>;
 
   // ---- ui ----
@@ -165,15 +171,21 @@ export const useStore = create<Store>()((set, get) => ({
 
   // ---- gallery ----
   images: [],
+  galleryStatus: "loading",
+  galleryError: null,
   selectedBatch: null,
   selectedImage: null,
   loadGallery: async () => {
+    set({ galleryStatus: "loading", galleryError: null });
     try {
       const images = await loadImages();
-      set({ images });
+      set({ images, galleryStatus: "ready" });
       if (images.length > 0) get().selectBatch(images[0].batchId);
     } catch (e) {
+      // Swallowing this used to leave images: [], telling a returning user whose storage failed
+      // that they had never generated anything.
       console.error("Failed to load gallery", e);
+      set({ galleryStatus: "error", galleryError: e instanceof Error ? e.message : String(e) });
     }
   },
   selectBatch: (batchId) => {
@@ -183,16 +195,41 @@ export const useStore = create<Store>()((set, get) => ({
   },
   selectImage: (img) => set({ selectedImage: img }),
   deleteImage: async (id) => {
-    await dbDelete(id);
-    const images = get().images.filter((i) => i.id !== id);
+    // Optimistic: drop from view immediately, hold the record in memory, and only touch IndexedDB
+    // once the undo window closes. A misclick otherwise destroys an unreproducible image.
+    const doomed = get().images.find((i) => i.id === id);
+    if (!doomed) return;
+
+    const prevImages = get().images;
+    const prevBatch = get().selectedBatch;
+    const prevSelected = get().selectedImage;
+
+    const images = prevImages.filter((i) => i.id !== id);
     set({ images });
-    const { selectedBatch } = get();
-    if (selectedBatch) {
-      const batch = selectedBatch.filter((i) => i.id !== id);
+    if (prevBatch) {
+      const batch = prevBatch.filter((i) => i.id !== id);
       if (batch.length) set({ selectedBatch: batch, selectedImage: batch[0] });
       else if (images.length) get().selectBatch(images[0].batchId);
       else set({ selectedBatch: null, selectedImage: null });
     }
+
+    let undone = false;
+    toast("Image deleted", {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          set({ images: prevImages, selectedBatch: prevBatch, selectedImage: prevSelected });
+        },
+      },
+      onAutoClose: () => {
+        if (!undone) void dbDelete(id);
+      },
+      onDismiss: () => {
+        if (!undone) void dbDelete(id);
+      },
+    });
   },
   clearGallery: async () => {
     await clearImages();
@@ -204,6 +241,7 @@ export const useStore = create<Store>()((set, get) => ({
   streamingBatch: null,
   lastError: null,
   abortRequested: false,
+  runStartedAt: null,
   cancelGenerate: () => {
     if (get().isGenerating) set({ abortRequested: true });
   },
@@ -222,6 +260,7 @@ export const useStore = create<Store>()((set, get) => ({
       isGenerating: true,
       lastError: null,
       abortRequested: false,
+      runStartedAt: Date.now(),
       streamingBatch: Array.from({ length: n }, (_, i) => ({
         sampleIndex: i,
         dataUrl: null,
@@ -299,12 +338,13 @@ export const useStore = create<Store>()((set, get) => ({
       set({ lastError: { message, at: Date.now() } });
       toast.error(`Generation failed: ${message}`);
     } finally {
-      set({ isGenerating: false, streamingBatch: null, abortRequested: false });
+      set({ isGenerating: false, streamingBatch: null, abortRequested: false, runStartedAt: null });
     }
   },
 
   // ---- director tools ----
   isDirectorProcessing: false,
+  directorKind: null,
   runDirector: async (kind, opts) => {
     const { client, selectedImage } = get();
     if (!client) {
@@ -315,7 +355,7 @@ export const useStore = create<Store>()((set, get) => ({
       toast.error("Select an image first");
       return;
     }
-    set({ isDirectorProcessing: true, lastError: null });
+    set({ isDirectorProcessing: true, directorKind: kind, lastError: null });
     try {
       const blob = await (await fetch(selectedImage.dataUrl)).blob();
       let results: Image[];
@@ -362,7 +402,7 @@ export const useStore = create<Store>()((set, get) => ({
       console.error("Director tool failed", e);
       toast.error(`Director tool failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
-      set({ isDirectorProcessing: false });
+      set({ isDirectorProcessing: false, directorKind: null });
     }
   },
 

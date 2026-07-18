@@ -25,6 +25,7 @@ export function Studio() {
   const collapsed = useStore((s) => s.settingsCollapsed);
   const galleryOpen = useStore((s) => s.galleryOpen);
   const imageCount = useStore((s) => s.images.length);
+  const galleryStatus = useStore((s) => s.galleryStatus);
   const setUI = useStore((s) => s.setUI);
   const generate = useStore((s) => s.generate);
   const isGenerating = useStore((s) => s.isGenerating);
@@ -153,7 +154,7 @@ export function Studio() {
               className={cn(railBtn, "relative")}
             >
               <Images className="size-4" />
-              {imageCount > 0 && (
+              {galleryStatus === "ready" && imageCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-[family-name:var(--font-mono)] text-[10px] font-bold text-on-accent">
                   {imageCount > 99 ? "99+" : imageCount}
                 </span>

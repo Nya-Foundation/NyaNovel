@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Dices, Lock, LockOpen } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
@@ -7,9 +8,10 @@ import {
   SAMPLER_OPTIONS,
   UC_PRESET_OPTIONS,
   SIZE_TIERS,
-  ASPECTS,
   presetDims,
   tierAspectForSize,
+  aspectsForTier,
+  sizeSummary,
 } from "@/lib/nai/models";
 import { Field, Section } from "./field";
 import { TagTextarea } from "./tag-textarea";
@@ -31,6 +33,12 @@ export function BasicTab() {
   const [tier, aspect] = tierAspectForSize(s.width, s.height);
   const isRandom = s.seed < 0;
 
+  // Where "Custom" returns to. Tracks the last size that matched a real preset.
+  const lastPreset = useRef({ w: s.width, h: s.height });
+  useEffect(() => {
+    if (tier !== null) lastPreset.current = { w: s.width, h: s.height };
+  }, [tier, s.width, s.height]);
+
   const setPreset = (t: string, a: string) => {
     const p = presetDims(t, a) ?? presetDims(t, "portrait") ?? presetDims("normal", a);
     if (p) patch({ width: p.w, height: p.h });
@@ -49,7 +57,7 @@ export function BasicTab() {
       </Section>
 
       <Section title="Prompt">
-        <Field label="Prompt" htmlFor="prompt">
+        <Field htmlFor="prompt">
           <TagTextarea
             id="prompt"
             placeholder="1girl, cherry blossoms, soft light, masterpiece…"
@@ -70,19 +78,32 @@ export function BasicTab() {
 
       <Section title="Resolution">
         <div className="mb-3 flex flex-col gap-2">
+          {/* Only the aspects this tier actually has — Wallpaper has no Square, and offering it
+              made clicking Wallpaper silently rewrite your aspect. */}
           <Segmented
             className="w-full"
             aria-label="Aspect ratio"
-            options={ASPECTS.map((a) => ({ value: a, label: cap(a) }))}
+            options={aspectsForTier(tier ?? "normal").map((a) => ({ value: a as string, label: cap(a) }))}
             value={aspect ?? ""}
             onValueChange={(a) => setPreset(tier ?? "normal", a)}
           />
+          {/* A non-preset size used to leave BOTH rows with zero active segments, which reads as a
+              rendering bug. "Custom" gives that state a name; re-clicking returns to the last preset. */}
           <Segmented
             className="w-full"
             aria-label="Size"
-            options={SIZE_TIERS.map((t) => ({ value: t, label: cap(t) }))}
-            value={tier ?? ""}
-            onValueChange={(t) => setPreset(t, aspect ?? "portrait")}
+            options={[
+              ...SIZE_TIERS.map((t) => ({ value: t as string, label: cap(t) })),
+              ...(tier === null ? [{ value: "custom", label: "Custom" }] : []),
+            ]}
+            value={tier ?? "custom"}
+            onValueChange={(t) => {
+              if (t === "custom") {
+                patch({ width: lastPreset.current.w, height: lastPreset.current.h });
+                return;
+              }
+              setPreset(t, aspect ?? "portrait");
+            }}
           />
         </div>
         <div className="flex items-end gap-2">
@@ -94,24 +115,12 @@ export function BasicTab() {
             <NumberInput id="h" min={64} max={2048} step={64} value={s.height} onChange={(e) => patch({ height: Number(e.target.value) })} />
           </Field>
         </div>
+        <p className="mt-2 text-right font-[family-name:var(--font-mono)] text-[11px] tabular-nums text-muted">
+          {sizeSummary(s.width, s.height)}
+        </p>
       </Section>
 
       <Section title="Sampling">
-        <Field label="Batch size">
-          <Slider min={1} max={8} value={s.nSamples} onValueChange={(v) => patch({ nSamples: v })} format={(v) => `${v} image${v > 1 ? "s" : ""}`} />
-        </Field>
-        <Field label="Steps">
-          <Slider min={1} max={50} value={s.steps} onValueChange={(v) => patch({ steps: v })} />
-        </Field>
-        <Field label="Sampler" htmlFor="sampler">
-          <Select id="sampler" value={s.sampler} onChange={(e) => patch({ sampler: e.target.value as typeof s.sampler })}>
-            {SAMPLER_OPTIONS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
         <Field label="Seed">
           <div className="flex gap-2">
             <NumberInput
@@ -146,6 +155,21 @@ export function BasicTab() {
               {isRandom ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
             </Button>
           </div>
+        </Field>
+        <Field>
+          <Slider label="Batch size" min={1} max={8} value={s.nSamples} onValueChange={(v) => patch({ nSamples: v })} format={(v) => `${v} image${v > 1 ? "s" : ""}`} />
+        </Field>
+        <Field hint="More steps means finer detail and a slower run. 23–28 is typical.">
+          <Slider label="Steps" showRange min={1} max={50} value={s.steps} onValueChange={(v) => patch({ steps: v })} />
+        </Field>
+        <Field label="Sampler" htmlFor="sampler">
+          <Select id="sampler" value={s.sampler} onChange={(e) => patch({ sampler: e.target.value as typeof s.sampler })}>
+            {SAMPLER_OPTIONS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
         </Field>
       </Section>
 

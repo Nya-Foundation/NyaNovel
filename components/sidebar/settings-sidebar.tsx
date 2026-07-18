@@ -52,7 +52,15 @@ export function SettingsSidebar() {
         <Segmented asTabs aria-label="Settings sections" options={TABS} value={activeTab} onValueChange={(v) => setUI({ activeTab: v })} className="flex-1" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Keyed so switching tabs cross-fades instead of hard-swapping a 360px column in one frame.
+          Plain opacity — these are peer panels, not a sequence, so a slide would imply order. */}
+      <div
+        key={activeTab}
+        role="tabpanel"
+        aria-label={TABS.find((t) => t.value === activeTab)?.label}
+        className="min-h-0 flex-1 overflow-y-auto"
+        style={{ animation: "fadeIn var(--duration-fast) var(--ease-out)" }}
+      >
         {activeTab === "basic" && <BasicTab />}
         {activeTab === "advanced" && <AdvancedTab />}
         {activeTab === "characters" && <CharactersTab />}

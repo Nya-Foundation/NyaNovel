@@ -37,6 +37,7 @@ export function ConnectModal() {
       open={show}
       dismissible={connected}
       onClose={() => setUI({ showConnect: false })}
+      ariaLabel="Welcome to NyaNovel — connect your NovelAI account"
       className="max-w-md"
     >
       <div className="mb-5 flex flex-col items-center text-center">

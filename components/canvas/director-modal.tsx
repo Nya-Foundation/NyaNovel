@@ -12,6 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 
+const DIRECTOR_LABELS: Record<DirectorKind, string> = {
+  lineArt: "Extracting line art…",
+  sketch: "Sketching…",
+  backgroundRemoval: "Removing background…",
+  declutter: "Decluttering…",
+  colorize: "Colorizing…",
+  emotion: "Changing emotion…",
+  upscale: "Upscaling 4× — this can take a while…",
+  enhance: "Enhancing…",
+};
+
 const ONE_TAP: { kind: DirectorKind; label: string; icon: React.ReactNode }[] = [
   { kind: "lineArt", label: "Line art", icon: <ScanLine className="size-4" /> },
   { kind: "sketch", label: "Sketch", icon: <PencilLine className="size-4" /> },
@@ -26,6 +37,7 @@ export function DirectorModal() {
   const setUI = useStore((s) => s.setUI);
   const selected = useStore((s) => s.selectedImage);
   const processing = useStore((s) => s.isDirectorProcessing);
+  const kind = useStore((s) => s.directorKind);
   const run = useStore((s) => s.runDirector);
 
   const [emotion, setEmotion] = useState<EmotionOptions>(EmotionOptions.NEUTRAL);
@@ -45,8 +57,10 @@ export function DirectorModal() {
     >
       <div className="relative flex flex-col gap-5">
         {processing && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[var(--radius-card)] bg-surface/70 backdrop-blur-sm">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] bg-surface/70 backdrop-blur-sm">
             <Loader2 className="motion-keep size-6 animate-spin text-accent" />
+            {/* A bare spinner made a 30s+ 4x upscale and an instant line-art look identical. */}
+            <span className="text-[12.5px] font-semibold text-fg">{DIRECTOR_LABELS[kind ?? "upscale"]}</span>
           </div>
         )}
 

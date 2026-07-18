@@ -116,6 +116,31 @@ export function tierAspectForSize(w: number, h: number): [SizeTier | null, Aspec
   return [tier as SizeTier, aspect as Aspect];
 }
 
+/** Aspects that actually exist for a tier — Wallpaper has no Square, so offering it would force a
+ *  silent fallback that changes the user's aspect behind their back. */
+export function aspectsForTier(tier: string): Aspect[] {
+  return ASPECTS.filter((a) => presetDims(tier, a) !== undefined);
+}
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+
+/** "1.01 MP · 1:1.46" — the cost and shape of the current size, for the custom W/H row. */
+export function sizeSummary(w: number, h: number): string {
+  if (!w || !h) return "—";
+  const mp = (w * h) / 1_000_000;
+  const g = gcd(w, h) || 1;
+  const [rw, rh] = [w / g, h / g];
+  // Only show an integer ratio when it's one a human recognises. 832x1216 reduces to 13:19, which
+  // is exact and completely unreadable — normalise those to 1:n instead.
+  const ratio =
+    rw <= 16 && rh <= 16
+      ? `${rw}:${rh}`
+      : w >= h
+        ? `${(w / h).toFixed(2)}:1`
+        : `1:${(h / w).toFixed(2)}`;
+  return `${mp.toFixed(2)} MP · ${ratio}`;
+}
+
 export const EMOTION_OPTIONS: Option<EmotionOptions>[] = Object.values(EmotionOptions).map((e) => ({
   value: e,
   label: e.charAt(0).toUpperCase() + e.slice(1),
