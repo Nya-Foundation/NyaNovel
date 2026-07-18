@@ -6,6 +6,10 @@ out
 dist
 *.tgz
 
+# next.js
+.next
+next-env.d.ts
+
 # code coverage
 coverage
 *.lcov
@@ -26,6 +30,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+
+# local tooling state
+.serena
 
 # IntelliJ based IDEs
 .idea

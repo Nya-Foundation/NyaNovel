@@ -1,9 +1,39 @@
 {
-  "devDependencies": {
-    "javascript-obfuscator": "^4.1.1",
-    "tailwindcss": "3"
-  },
+  "name": "nyanovel",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "build": "npx tailwindcss -i ./styles.css -o ./dist/styles.css --minify && javascript-obfuscator script.js --output dist/script.js && cp index.html dist/index.html"
-  }
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.25.0",
+    "nekoai-js": "^1.3.0",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.10",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
+  },
+  "trustedDependencies": [
+    "unrs-resolver"
+  ]
 }

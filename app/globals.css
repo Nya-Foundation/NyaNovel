@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* Prose in docs/ isn't markup — scanning it makes Tailwind try to compile class names quoted
+   inside design notes (e.g. `rounded-[var(--radius-*)]`) and emit invalid CSS. */
+@source not "../docs";
+
+/* ============================================================
+   NyaNovel — design tokens (inherited from the latent.moe system)
+   Tailwind v4: CSS variables mapped to Tailwind tokens.
+   Theme flips via data-mode / data-accent on <html>.
+   ============================================================ */
+
+@theme inline {
+  /* neutral roles */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  /* accent */
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-on-accent: var(--on-accent);
+  /* status */
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  /* Danbooru tag categories (used by tag autocomplete / suggestTags) */
+  --color-cat-general: var(--cat-general);
+  --color-cat-artist: var(--cat-artist);
+  --color-cat-copyright: var(--cat-copyright);
+  --color-cat-character: var(--cat-character);
+  --color-cat-meta: var(--cat-meta);
+  --color-cat-lora: var(--cat-lora);
+  /* fonts (wired in lib/fonts.ts via next/font variables) */
+  --font-display: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  /* motion — the shared vocabulary for change.
+     Assignment rule: color/opacity -> instant; transform/size -> fast|base; layout -> slow. */
+  --duration-instant: 90ms;
+  --duration-fast: 160ms;
+  --duration-base: 240ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* radii */
+  --radius-chip: 8px;
+  --radius-input: 10px;
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-card-lg: 16px;
+  --radius-pill: 999px;
+}
+
+/* ---- DARK (default) ---- */
+:root,
+[data-mode="dark"] {
+  --bg: oklch(0.145 0.006 265);
+  --surface: oklch(0.185 0.008 265);
+  --surface-2: oklch(0.225 0.01 265);
+  --surface-3: oklch(0.265 0.012 265);
+  --border: oklch(0.285 0.011 265);
+  --border-soft: oklch(0.235 0.009 265);
+  --fg: oklch(0.965 0.003 265);
+  --fg-2: oklch(0.8 0.008 265);
+  --muted: oklch(0.62 0.014 265);
+  /* Latent Frame: Signal Coral is the product's default load-bearing colour. */
+  --accent: #f35f52;
+  --accent-bright: #ff7b70;
+  --on-accent: #171719;
+  --danger: oklch(0.7 0.16 25);
+  --danger-bg: oklch(0.55 0.19 25);
+  --ok: oklch(0.74 0.13 160);
+  --warn: oklch(0.8 0.12 85);
+  --cat-general: oklch(0.72 0.11 250);
+  --cat-artist: oklch(0.72 0.13 32);
+  --cat-copyright: oklch(0.72 0.14 330);
+  --cat-character: oklch(0.74 0.11 160);
+  --cat-meta: oklch(0.8 0.11 85);
+  --cat-lora: oklch(0.72 0.15 290);
+  /* elevation (dark: depth comes from soft dark shadows + a faint top highlight) */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px -3px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 8px 34px -14px rgba(0, 0, 0, 0.75);
+  --shadow-pop: 0 24px 60px -16px rgba(0, 0, 0, 0.8), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  --hairline-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  --glow-accent: 0 6px 22px -6px color-mix(in oklab, var(--accent) 55%, transparent);
+  --ring-accent: 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+/* ---- LIGHT ---- */
+[data-mode="light"] {
+  --bg: oklch(0.985 0.0015 265);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.972 0.003 265);
+  --surface-3: oklch(0.955 0.004 265);
+  --border: oklch(0.905 0.006 265);
+  --border-soft: oklch(0.935 0.005 265);
+  --fg: oklch(0.215 0.013 265);
+  --fg-2: oklch(0.4 0.013 265);
+  --muted: oklch(0.52 0.014 265);
+  --accent: #f35f52;
+  --accent-bright: #df493e;
+  --on-accent: #171719;
+  /* Status colors: the dark defaults (L 0.7-0.8) sit at ~2:1 on the near-white light bg, so they
+     must be re-darkened here to clear WCAG AA for text/icons. --danger-bg stays saturated (it backs
+     white text on badges). */
+  --danger: oklch(0.52 0.2 25);
+  --danger-bg: oklch(0.55 0.19 25);
+  --ok: oklch(0.48 0.13 160);
+  --warn: oklch(0.52 0.13 80);
+  --cat-general: oklch(0.5 0.15 250);
+  --cat-artist: oklch(0.52 0.16 32);
+  --cat-copyright: oklch(0.5 0.17 330);
+  --cat-character: oklch(0.48 0.13 162);
+  --cat-meta: oklch(0.52 0.13 80);
+  --cat-lora: oklch(0.55 0.18 290);
+  /* elevation (light: soft cool-tinted shadows) */
+  --shadow-card: 0 1px 2px rgba(30, 41, 59, 0.06), 0 2px 8px -3px rgba(30, 41, 59, 0.1);
+  --shadow-panel: 0 8px 30px -14px rgba(30, 41, 59, 0.18);
+  --shadow-pop: 0 24px 60px -16px rgba(30, 41, 59, 0.22), 0 2px 8px -2px rgba(30, 41, 59, 0.1);
+  --hairline-top: inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  --glow-accent: 0 8px 24px -8px color-mix(in oklab, var(--accent) 45%, transparent);
+  --ring-accent: 0 0 0 1px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+/* ---- accent variants (dark) ---- */
+[data-accent="blue"] { --accent: oklch(0.62 0.15 255); --accent-bright: oklch(0.74 0.12 255); }
+[data-accent="violet"] { --accent: oklch(0.6 0.17 292); --accent-bright: oklch(0.74 0.14 292); }
+[data-accent="emerald"] { --accent: oklch(0.6 0.12 165); --accent-bright: oklch(0.74 0.11 165); }
+[data-accent="magenta"] { --accent: oklch(0.62 0.18 350); --accent-bright: oklch(0.76 0.15 350); }
+[data-accent="coral"] { --accent: oklch(0.64 0.17 35); --accent-bright: oklch(0.76 0.14 42); }
+
+/* ---- accent variants (light) ---- */
+[data-mode="light"][data-accent="blue"] { --accent: oklch(0.52 0.16 255); --accent-bright: oklch(0.5 0.16 255); }
+[data-mode="light"][data-accent="violet"] { --accent: oklch(0.5 0.19 292); --accent-bright: oklch(0.48 0.19 292); }
+[data-mode="light"][data-accent="emerald"] { --accent: oklch(0.5 0.13 165); --accent-bright: oklch(0.46 0.13 165); }
+[data-mode="light"][data-accent="magenta"] { --accent: oklch(0.52 0.19 350); --accent-bright: oklch(0.5 0.19 350); }
+[data-mode="light"][data-accent="coral"] { --accent: oklch(0.55 0.18 35); --accent-bright: oklch(0.52 0.18 35); }
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    scrollbar-gutter: stable;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body { font-family: var(--font-sans); }
+  ::selection { background: var(--accent); color: var(--on-accent); }
+}
+
+/* Both supplied wordmarks are rendered so theme changes swap instantly without fetching or
+   remounting an image. The no-flash script sets data-mode before first paint. */
+.brand-logo-light { display: none; }
+[data-mode="light"] .brand-logo-dark { display: none; }
+[data-mode="light"] .brand-logo-light { display: block; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { 0% { background-position: -460px 0; } 100% { background-position: 460px 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+
+/* Reduced motion. `.motion-keep` opts an element out entirely — it marks the indicators whose whole
+   job is to prove the app is still working (spinners, the streaming shimmer); freezing those makes
+   an in-flight request indistinguishable from a hang.
+
+   The opt-out is expressed as a :not() on the blanket rule rather than a second rule that tries to
+   undo it. `animation-duration: revert` would roll back to the user-agent origin — i.e. 0s — not to
+   the author's declared duration, which stops the spinner harder than the rule it was escaping. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.motion-keep, .motion-keep *),
+  *:not(.motion-keep, .motion-keep *)::before,
+  *:not(.motion-keep, .motion-keep *)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

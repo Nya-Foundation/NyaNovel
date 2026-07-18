@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="0 0 1280 640">
+  <title id="title">NyaNovel GitHub social banner</title>
+  <desc id="desc">Latent Frame logo with the phrase AI image generation, refined.</desc>
+  <defs>
+    <path id="mark" d="M12 12h40v22H34v18H12V12Zm64 0h40v40H94V34H76V12ZM12 76h22v18h18v22H12V76Zm82 0h22v40H76V94h18V76ZM64 53l11 11-11 11-11-11 11-11Z"/>
+  </defs>
+  <rect width="1280" height="640" fill="#171719"/>
+  <use href="#mark" fill="#F35F52" transform="translate(104 188) scale(2.0625)"/>
+  <text x="410" y="330" fill="#FAF8F4" font-family="Liberation Sans, Arial, sans-serif" font-size="132" font-weight="700">NyaNovel</text>
+  <rect x="412" y="380" width="56" height="6" rx="3" fill="#F35F52"/>
+  <text x="412" y="442" fill="#FAF8F4" font-family="Liberation Sans, Arial, sans-serif" font-size="32" font-weight="400" letter-spacing=".2">AI image generation, refined.</text>
+  <text x="412" y="492" fill="#BDB9B4" font-family="Liberation Sans, Arial, sans-serif" font-size="23" font-weight="400" letter-spacing=".3">Fast controls · live streaming · local-first privacy</text>
+</svg>
