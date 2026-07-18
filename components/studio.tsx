@@ -77,8 +77,11 @@ export function Studio() {
           )}
         >
           {/* Rail: keeps the primary action instead of amputating it. */}
+          {/* `inert` both hides this from AT and removes it from the tab order. It used to be
+              aria-hidden only, so a keyboard user tabbed through invisible controls — and
+              aria-hidden over a focusable element is itself an ARIA violation. */}
           <div
-            aria-hidden={!collapsed}
+            inert={!collapsed}
             className={cn(
               "absolute inset-y-0 left-0 flex w-11 flex-col items-center gap-2 py-3 transition-opacity duration-fast",
               collapsed ? "opacity-100" : "pointer-events-none opacity-0",
@@ -89,7 +92,6 @@ export function Studio() {
               aria-label="Expand settings"
               title="Expand settings — ["
               onClick={() => setUI({ settingsCollapsed: false })}
-              tabIndex={collapsed ? 0 : -1}
               className={railBtn}
             >
               <PanelLeftOpen className="size-4" />
@@ -102,7 +104,6 @@ export function Studio() {
                 aria-label="Generate"
                 title={`Generate${nSamples > 1 ? ` · ${nSamples}` : ""} — ⌘↵${prompt ? `\n${prompt.slice(0, 80)}` : ""}`}
                 onClick={() => void generate()}
-                tabIndex={collapsed ? 0 : -1}
                 className={cn(
                   "flex size-9 items-center justify-center rounded-[9px] bg-accent text-on-accent shadow-[var(--glow-accent)]",
                   "transition-[filter,transform] duration-fast ease-out hover:brightness-[1.07] active:scale-[0.96]",
@@ -117,7 +118,7 @@ export function Studio() {
 
           {/* Fixed-width inner wrapper so the sidebar's own layout doesn't squash during the tween. */}
           <div
-            aria-hidden={collapsed}
+            inert={collapsed}
             className={cn(
               "h-full w-[360px] transition-opacity duration-fast",
               collapsed ? "pointer-events-none opacity-0" : "opacity-100",
@@ -139,7 +140,7 @@ export function Studio() {
           )}
         >
           <div
-            aria-hidden={galleryOpen}
+            inert={galleryOpen}
             className={cn(
               "absolute inset-y-0 left-0 flex w-11 flex-col items-center py-3 transition-opacity duration-fast",
               galleryOpen ? "pointer-events-none opacity-0" : "opacity-100",
@@ -150,7 +151,6 @@ export function Studio() {
               aria-label="Open gallery"
               title="Open gallery — ]"
               onClick={() => setUI({ galleryOpen: true })}
-              tabIndex={galleryOpen ? -1 : 0}
               className={cn(railBtn, "relative")}
             >
               <Images className="size-4" />
@@ -163,7 +163,7 @@ export function Studio() {
           </div>
 
           <div
-            aria-hidden={!galleryOpen}
+            inert={!galleryOpen}
             className={cn(
               "h-full w-[280px] transition-opacity duration-fast",
               galleryOpen ? "opacity-100" : "pointer-events-none opacity-0",

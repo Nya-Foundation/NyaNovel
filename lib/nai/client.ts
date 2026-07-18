@@ -55,6 +55,35 @@ export function clearConnection() {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
 }
 
+export type TokenVerdict = "ok" | "invalid" | "unknown";
+
+/**
+ * Cheap authentication probe, so the UI can stop claiming "Connected" about a token it never
+ * checked. Constructing a NaiClient performs zero I/O, so without this a truncated token gets a
+ * green dot and a success toast, then fails forty seconds later behind a shimmer.
+ *
+ * Deliberately NOT `suggestTags`: that endpoint is unauthenticated and returns real results for a
+ * garbage token, so it would wave every bad key through.
+ *
+ * Returns "unknown" — never "invalid" — for anything that isn't a hard 401/403. A network blip or
+ * a CORS failure must not lock a user out of their own client. And the probe is skipped entirely
+ * for custom hosts: a proxy that forwards only the image endpoints has no reason to serve
+ * api.novelai.net's account routes, so probing it would punish exactly the setup we support.
+ */
+export async function verifyToken(cfg: ConnectionConfig): Promise<TokenVerdict> {
+  if (cfg.host !== Host.WEB) return "unknown";
+  try {
+    const res = await fetch(`${Host.API}/user/subscription`, {
+      headers: { Authorization: `Bearer ${cfg.token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status === 401 || res.status === 403) return "invalid";
+    return "ok";
+  } catch {
+    return "unknown";
+  }
+}
+
 // ---- Client wrapper ----
 
 const MAX_SEED = 4294967295;

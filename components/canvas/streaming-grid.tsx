@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useStore, type StreamTile } from "@/lib/store";
+import { DEFAULT_CONNECTION } from "@/lib/nai/client";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,16 @@ function useElapsed(startedAt: number | null) {
 export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdrop?: string | null }) {
   const steps = useStore((s) => s.settings.steps);
   const startedAt = useStore((s) => s.runStartedAt);
+  const width = useStore((s) => s.settings.width);
+  const height = useStore((s) => s.settings.height);
   const elapsed = useElapsed(startedAt);
+  // Don't attribute a stall to NovelAI when the user pointed the client at their own proxy.
+  const isDirect = useStore((s) => (s.connection?.host ?? DEFAULT_CONNECTION.host) === DEFAULT_CONNECTION.host);
+
+  // Blur scales with tile size. A flat radius that reads as "resolving" on a single large tile
+  // erases composition entirely across a 9-up grid — during exactly the window where the user is
+  // deciding whether to hit Stop.
+  const maxBlur = tiles.length <= 1 ? 14 : tiles.length <= 4 ? 9 : 6;
 
   const done = tiles.filter((t) => t.status === "done").length;
   const mean = tiles.length ? tiles.reduce((a, t) => a + t.progress, 0) / tiles.length : 0;
@@ -55,7 +65,11 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
 
       <div className="relative mb-3 flex items-center gap-2 text-[12.5px]">
         <span className="font-semibold text-fg">
-          {stalled ? "Still waiting — NovelAI may be busy" : done === tiles.length ? "Finishing up" : "Generating"}
+          {stalled
+            ? `Still waiting — ${isDirect ? "NovelAI" : "the host"} may be busy`
+            : done === tiles.length
+              ? "Finishing up"
+              : "Generating"}
         </span>
         <span className="font-[family-name:var(--font-mono)] text-[12px] tabular-nums text-muted">
           {done}/{tiles.length} · {Math.round(mean * 100)}% · {mmss(elapsed)}
@@ -66,17 +80,36 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
         {tiles.map((t) => (
           <div
             key={t.sampleIndex}
-            className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-[var(--radius-card)] border border-border-soft bg-surface-2"
+            // The real target aspect, not a hardcoded 3:4 — a landscape batch used to preview in
+            // portrait boxes and then reflow the moment it committed.
+            style={{ aspectRatio: `${width} / ${height}` }}
+            className="relative flex items-center justify-center overflow-hidden rounded-[var(--radius-card)] border border-border-soft bg-surface-2"
           >
             {t.dataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={t.dataUrl}
                 alt=""
-                className={cn(
-                  "h-full w-full object-cover transition-[filter] duration-base ease-out",
-                  t.status !== "done" && "blur-[6px]",
-                )}
+                // THE SIGNATURE: blur radius is bound to denoise progress, so the picture pulls
+                // into focus as the model resolves it rather than sitting behind a flat frost and
+                // popping. `(1-p)^1.5` sits below linear throughout — composition becomes legible
+                // early (so you can abort sooner) and the tail is gentle, so the tile settles
+                // instead of lurching at the end.
+                //
+                // duration-fast, NOT duration-base: intermediates arrive ~200ms apart, so a 240ms
+                // transition would never settle and the blur would permanently lag real progress.
+                //
+                // Under prefers-reduced-motion the global rule collapses the transition and the
+                // blur steps instead of gliding. That is the correct degradation — the information
+                // survives, the animation doesn't — so this deliberately does not opt out via
+                // .motion-keep the way the spinner and shimmer do.
+                className="h-full w-full object-cover transition-[filter] duration-fast ease-out"
+                style={{
+                  filter:
+                    t.status === "done"
+                      ? undefined
+                      : `blur(${((1 - t.progress) ** 1.5 * maxBlur).toFixed(1)}px)`,
+                }}
               />
             ) : (
               <div

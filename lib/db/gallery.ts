@@ -58,9 +58,13 @@ export async function loadImages(): Promise<GalleryImage[]> {
 }
 
 export async function saveImage(image: GalleryImage): Promise<number> {
-  // Strip any reactive proxies to a plain, structured-cloneable object.
-  const clean: GalleryImage = JSON.parse(JSON.stringify({ ...image, id: undefined }));
-  delete clean.id;
+  // Only `settings` carries a reactive proxy, so that's the only field that needs cloning.
+  // This used to round-trip the whole record through JSON — which meant re-encoding a
+  // multi-megabyte base64 dataUrl twice, on the main thread, once per image. That was the
+  // multi-second freeze between "Finishing up" and the result appearing, and it ate the
+  // hero fade whole.
+  const { id: _id, ...rest } = image;
+  const clean = { ...rest, settings: structuredClone(image.settings) };
   return tx<IDBValidKey>("readwrite", (s) => s.add(clean)).then((k) => k as number);
 }
 

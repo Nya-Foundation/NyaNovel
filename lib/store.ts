@@ -8,6 +8,7 @@ import {
   loadConnection,
   saveConnection,
   clearConnection,
+  verifyToken,
   type ConnectionConfig,
 } from "@/lib/nai/client";
 import { DEFAULT_SETTINGS, type GenerationSettings, type ReferenceImage, type CharacterSetting } from "@/lib/nai/types";
@@ -48,7 +49,9 @@ type Store = {
   // ---- connection ----
   connection: ConnectionConfig | null;
   client: NaiClient | null;
-  connect: (cfg: ConnectionConfig) => void;
+  /** Resolves false when the token was hard-rejected; the modal stays open and explains. */
+  connect: (cfg: ConnectionConfig) => Promise<boolean>;
+  connectionStatus: "idle" | "verifying" | "ok" | "invalid";
   disconnect: () => void;
 
   // ---- settings ----
@@ -117,13 +120,21 @@ export const useStore = create<Store>()((set, get) => ({
   // ---- connection ----
   connection: null,
   client: null,
-  connect: (cfg) => {
+  connectionStatus: "idle",
+  connect: async (cfg) => {
+    set({ connectionStatus: "verifying" });
+    const verdict = await verifyToken(cfg);
+    if (verdict === "invalid") {
+      set({ connectionStatus: "invalid" });
+      return false;
+    }
     saveConnection(cfg);
-    set({ connection: cfg, client: new NaiClient(cfg), showConnect: false });
+    set({ connection: cfg, client: new NaiClient(cfg), showConnect: false, connectionStatus: "ok" });
+    return true;
   },
   disconnect: () => {
     clearConnection();
-    set({ connection: null, client: null });
+    set({ connection: null, client: null, connectionStatus: "idle" });
   },
 
   // ---- settings ----
@@ -252,6 +263,16 @@ export const useStore = create<Store>()((set, get) => ({
       set({ showConnect: true });
       return;
     }
+    // An empty prompt is a real, billed request that returns noise. Characters count as intent —
+    // a V4 prompt can legitimately live entirely in the character list.
+    const hasIntent =
+      settings.prompt.trim().length > 0 ||
+      settings.characters.some((c) => c.enabled && c.prompt.trim().length > 0);
+    if (!hasIntent) {
+      toast.error("Describe something first — an empty prompt still costs Anlas.");
+      set({ settingsCollapsed: false, activeTab: "basic" });
+      return;
+    }
     const n = Math.max(1, settings.nSamples);
     // Deliberately does NOT clear selectedBatch/selectedImage: the success path below overwrites
     // them anyway, and keeping them means a failed run leaves the user's previous image intact
@@ -270,10 +291,43 @@ export const useStore = create<Store>()((set, get) => ({
       })),
     });
 
+    // Declared outside the try so the catch can still reach them: a run that dies mid-stream has
+    // to be able to persist the samples that already finished.
+    const finals: { dataUrl: string; sampleIndex: number }[] = [];
+    const batchId = Date.now();
+    let baseSeed = 0;
+
+    // Persist whatever finished and reveal it. Called from both the success tail and the catch.
+    const commit = async (): Promise<GalleryImage[]> => {
+      if (!finals.length) return [];
+      const ordered = finals.slice().sort((a, b) => a.sampleIndex - b.sampleIndex);
+      const saved = await Promise.all(
+        ordered.map(async (f, i) => {
+          // Per-image seed, not the batch base seed — otherwise "Use these settings" on image #3
+          // silently restores image #1's recipe while the toolbar chip shows the correct seed.
+          const img: GalleryImage = {
+            dataUrl: f.dataUrl,
+            timestamp: new Date().toISOString(),
+            filename: `nyanovel_${batchId}_${i + 1}.png`,
+            seed: baseSeed + f.sampleIndex,
+            settings: { ...settings, seed: baseSeed + f.sampleIndex },
+            batchId,
+            batchIndex: i,
+            batchSize: ordered.length,
+          };
+          img.id = await saveImage(img);
+          return img;
+        }),
+      );
+
+      set((s) => ({ images: [...saved.slice().reverse(), ...s.images] }));
+      set({ selectedBatch: saved, selectedImage: saved[0], galleryOpen: true });
+      return saved;
+    };
+
     try {
       const { seed, events } = await client.generate(settings);
-      const batchId = Date.now();
-      const finals: { dataUrl: string; sampleIndex: number }[] = [];
+      baseSeed = seed;
 
       for await (const ev of events) {
         // Breaking calls the iterator's .return(), which closes the stream reader. nekoai-js's own
@@ -295,39 +349,23 @@ export const useStore = create<Store>()((set, get) => ({
               ) ?? null,
           }));
         } else if (ev.event_type === EventType.FINAL) {
-          finals.push({ dataUrl: ev.image.toDataURL(), sampleIndex: ev.samp_ix });
+          // The tile must adopt the FINAL image, not keep the last INTERMEDIATE. Previously the
+          // frame that un-blurred on completion was the penultimate latent — legible only
+          // *because* it was blurred — which then swapped to a different image once the batch
+          // committed. And a stream that emits no intermediates at all left dataUrl null while
+          // status flipped to "done", stranding the tile on a shimmer that never resolved.
+          const dataUrl = ev.image.toDataURL();
+          finals.push({ dataUrl, sampleIndex: ev.samp_ix });
           set((s) => ({
             streamingBatch:
               s.streamingBatch?.map((t) =>
-                t.sampleIndex === ev.samp_ix ? { ...t, progress: 1, status: "done" } : t,
+                t.sampleIndex === ev.samp_ix ? { ...t, dataUrl, progress: 1, status: "done" } : t,
               ) ?? null,
           }));
         }
       }
 
-      finals.sort((a, b) => a.sampleIndex - b.sampleIndex);
-      const saved: GalleryImage[] = [];
-      for (let i = 0; i < finals.length; i++) {
-        // Per-image seed, not the batch base seed — otherwise "Use these settings" on image #3
-        // silently restores image #1's recipe while the toolbar chip shows the correct seed.
-        const snapshot: GenerationSettings = { ...settings, seed: seed + finals[i].sampleIndex };
-        const img: GalleryImage = {
-          dataUrl: finals[i].dataUrl,
-          timestamp: new Date().toISOString(),
-          filename: `nyanovel_${batchId}_${i + 1}.png`,
-          seed: seed + finals[i].sampleIndex,
-          settings: snapshot,
-          batchId,
-          batchIndex: i,
-          batchSize: finals.length,
-        };
-        const id = await saveImage(img);
-        img.id = id;
-        saved.push(img);
-      }
-
-      set((s) => ({ images: [...saved.slice().reverse(), ...s.images] }));
-      if (saved.length) set({ selectedBatch: saved, selectedImage: saved[0], galleryOpen: true });
+      const saved = await commit();
 
       if (get().abortRequested) {
         toast(saved.length ? `Stopped — kept ${saved.length} finished image${saved.length > 1 ? "s" : ""}` : "Stopped");
@@ -335,8 +373,25 @@ export const useStore = create<Store>()((set, get) => ({
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("Generation failed", e);
-      set({ lastError: { message, at: Date.now() } });
-      toast.error(`Generation failed: ${message}`);
+
+      // Samples that already finished are paid for and unreproducible, so a late failure must not
+      // discard them — the abort path above already keeps them, and diverging here was the bug.
+      // Persisting is best-effort: a save failure must not mask the error that actually broke the run.
+      let rescued: GalleryImage[] = [];
+      try {
+        rescued = await commit();
+      } catch (saveErr) {
+        console.error("Could not persist images from the failed run", saveErr);
+      }
+
+      if (rescued.length) {
+        // Not an ErrorState: there are images on screen. A full-canvas error card would cover
+        // the very thing that survived.
+        toast.error(`Run failed — kept ${rescued.length} finished image${rescued.length > 1 ? "s" : ""}`);
+      } else {
+        set({ lastError: { message, at: Date.now() } });
+        toast.error(`Generation failed: ${message}`);
+      }
     } finally {
       set({ isGenerating: false, streamingBatch: null, abortRequested: false, runStartedAt: null });
     }
@@ -418,8 +473,23 @@ export const useStore = create<Store>()((set, get) => ({
   // ---- lifecycle ----
   init: async () => {
     const cfg = loadConnection();
-    if (cfg) set({ connection: cfg, client: new NaiClient(cfg) });
-    else set({ showConnect: true });
+    if (cfg) {
+      // Trust the stored token immediately so the app is usable on first paint, then check it in
+      // the background. A revoked or expired key otherwise shows "Connected" forever and only
+      // reveals itself as a failed generation.
+      set({ connection: cfg, client: new NaiClient(cfg), connectionStatus: "ok" });
+      void verifyToken(cfg).then((verdict) => {
+        // Only a hard rejection revokes, and never mid-run — a background probe must not yank the
+        // client out from under a generation that is currently streaming.
+        if (verdict === "invalid" && !get().isGenerating) {
+          clearConnection();
+          set({ connection: null, client: null, connectionStatus: "invalid", showConnect: true });
+          toast.error("Your saved token is no longer valid — please reconnect.");
+        }
+      });
+    } else {
+      set({ showConnect: true });
+    }
     await get().loadGallery();
   },
 }));

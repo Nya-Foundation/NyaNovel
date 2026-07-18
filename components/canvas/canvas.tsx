@@ -126,7 +126,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           alt=""
           onClick={focusThis}
           className="relative max-h-full max-w-full cursor-zoom-in rounded-[var(--radius-card)] object-contain shadow-[var(--shadow-pop)] ring-1 ring-white/10"
-          style={{ animation: "fadeIn 240ms ease-out" }}
+          style={{ animation: "fadeIn var(--duration-base) var(--ease-out)" }}
         />
         <button
           type="button"
@@ -170,7 +170,9 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
                 tabIndex={active ? 0 : -1}
                 onClick={() => selectImage(b)}
                 className={cn(
-                  "size-14 shrink-0 cursor-pointer overflow-hidden rounded-[10px]",
+                  // Same radius as the stage image above it — both frame the same picture and are
+                  // on screen together, so a 10px-vs-14px disagreement is actually visible.
+                  "size-14 shrink-0 cursor-pointer overflow-hidden rounded-[var(--radius-card)]",
                   "transition-[opacity,transform,box-shadow] duration-fast ease-out",
                   focusRing,
                   active

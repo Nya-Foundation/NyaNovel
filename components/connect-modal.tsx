@@ -22,16 +22,31 @@ export function ConnectModal() {
   const [maxRetries, setMaxRetries] = useState(existing?.maxRetries ?? DEFAULT_CONNECTION.maxRetries);
   const [baseDelay, setBaseDelay] = useState(existing?.baseDelay ?? DEFAULT_CONNECTION.baseDelay);
   const [advanced, setAdvanced] = useState(false);
+  const [rejected, setRejected] = useState(false);
+  const verifying = useStore((s) => s.connectionStatus === "verifying");
 
   // Direct-to-NovelAI vs. a proxied host changes both the copy and where credentials travel.
   const isDirect = (host.trim() || DEFAULT_CONNECTION.host) === DEFAULT_CONNECTION.host;
 
-  const submit = () => {
+  const submit = async () => {
     if (!token.trim()) {
+      setRejected(false);
       toast.error(isDirect ? "Please enter your NovelAI API token" : "Please enter your access key");
       return;
     }
-    connect({ token: token.trim(), host: host.trim() || DEFAULT_CONNECTION.host, maxRetries, baseDelay });
+    setRejected(false);
+    const ok = await connect({
+      token: token.trim(),
+      host: host.trim() || DEFAULT_CONNECTION.host,
+      maxRetries,
+      baseDelay,
+    });
+    // The failure belongs next to the field you have to fix, not in a corner toast that fades
+    // while you're still looking at the input.
+    if (!ok) {
+      setRejected(true);
+      return;
+    }
     toast.success(isDirect ? "Connected to NovelAI" : "Connected");
   };
 
@@ -83,11 +98,32 @@ export function ConnectModal() {
               placeholder={isDirect ? "pst-..." : "your access key"}
               className="pl-9 font-[family-name:var(--font-mono)] text-[13px]"
               value={token}
-              onChange={(e) => setToken(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
+              aria-invalid={rejected || undefined}
+              aria-describedby={rejected ? "nai-token-error" : undefined}
+              onChange={(e) => {
+                setToken(e.target.value);
+                if (rejected) setRejected(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && void submit()}
             />
           </div>
+          {rejected && (
+            <p id="nai-token-error" role="alert" className="mt-1.5 text-[12.5px] text-danger">
+              {isDirect
+                ? "NovelAI rejected that token. Copy it again from your account settings — it starts with pst-."
+                : "The host rejected that access key. Check the key and the host URL below."}
+            </p>
+          )}
         </div>
+
+        {/* The modal used to demand a token without ever saying where one comes from — a dead end
+            for anyone who hadn't already found it. */}
+        {isDirect && !rejected && (
+          <p className="-mt-1 text-[12px] leading-relaxed text-muted">
+            Find yours in NovelAI under{" "}
+            <span className="text-fg-2">Account → Get Persistent API Token</span>.
+          </p>
+        )}
 
         <button
           type="button"
@@ -128,8 +164,21 @@ export function ConnectModal() {
           </div>
         )}
 
-        <Button onClick={submit} className="mt-1 w-full">
-          {connected ? "Update connection" : "Connect"}
+        <Button onClick={() => void submit()} disabled={verifying} aria-busy={verifying} className="mt-1 w-full">
+          {verifying ? (
+            <>
+              <span
+                className="motion-keep size-4 rounded-full border-2 border-current/30 border-t-current"
+                style={{ animation: "spin 0.7s linear infinite" }}
+                aria-hidden
+              />
+              Checking key…
+            </>
+          ) : connected ? (
+            "Update connection"
+          ) : (
+            "Connect"
+          )}
         </Button>
       </div>
     </Modal>
