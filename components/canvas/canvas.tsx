@@ -243,13 +243,31 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
   );
 }
 
-/** Maps an opaque API failure onto something the user can act on. */
+/**
+ * Maps an opaque API failure onto something the user can act on. Status codes are forwarded
+ * verbatim whether the host is NovelAI directly or a proxy, so the copy stays neutral about which
+ * credential was rejected and which side ran out of capacity.
+ */
 function explain(message: string): { title: string; detail: string; reconnect: boolean } {
   const m = message.toLowerCase();
   if (/401|403|unauthor|forbidden|token/.test(m))
-    return { title: "Your NovelAI token was rejected", detail: "It may have expired or been copied incompletely.", reconnect: true };
+    return {
+      title: "Your credentials were rejected",
+      detail: "The key may have expired, been copied incompletely, or lost access. Re-enter it to try again.",
+      reconnect: true,
+    };
   if (/402|429|quota|rate limit|too many/.test(m))
-    return { title: "NovelAI quota or rate limit reached", detail: "Your account is out of Anlas or sending too fast. Wait a moment and retry.", reconnect: false };
+    return {
+      title: "Out of capacity",
+      detail: "The account is out of credit or too many requests are in flight. Wait a moment and retry.",
+      reconnect: false,
+    };
+  if (/5\d\d|network|fetch|timeout|econn/.test(m))
+    return {
+      title: "Couldn't reach the server",
+      detail: "The host didn't respond. Check your connection, or the Host URL under Connect.",
+      reconnect: true,
+    };
   return { title: "Generation failed", detail: "The request didn't complete. Your settings are untouched.", reconnect: false };
 }
 

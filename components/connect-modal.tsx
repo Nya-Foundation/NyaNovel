@@ -23,13 +23,16 @@ export function ConnectModal() {
   const [baseDelay, setBaseDelay] = useState(existing?.baseDelay ?? DEFAULT_CONNECTION.baseDelay);
   const [advanced, setAdvanced] = useState(false);
 
+  // Direct-to-NovelAI vs. a proxied host changes both the copy and where credentials travel.
+  const isDirect = (host.trim() || DEFAULT_CONNECTION.host) === DEFAULT_CONNECTION.host;
+
   const submit = () => {
     if (!token.trim()) {
-      toast.error("Please enter your NovelAI API token");
+      toast.error(isDirect ? "Please enter your NovelAI API token" : "Please enter your access key");
       return;
     }
     connect({ token: token.trim(), host: host.trim() || DEFAULT_CONNECTION.host, maxRetries, baseDelay });
-    toast.success("Connected to NovelAI");
+    toast.success(isDirect ? "Connected to NovelAI" : "Connected");
   };
 
   return (
@@ -37,7 +40,7 @@ export function ConnectModal() {
       open={show}
       dismissible={connected}
       onClose={() => setUI({ showConnect: false })}
-      ariaLabel="Welcome to NyaNovel — connect your NovelAI account"
+      ariaLabel="Welcome to NyaNovel — connect to start generating"
       className="max-w-md"
     >
       <div className="mb-5 flex flex-col items-center text-center">
@@ -51,21 +54,33 @@ export function ConnectModal() {
         <h2 className="font-[family-name:var(--font-display)] text-[21px] font-bold tracking-[-0.02em] text-fg">
           Welcome to NyaNovel
         </h2>
+        {/* The destination is user-configurable, so the privacy claim has to follow it. Saying
+            "straight to NovelAI" while Host URL points at a proxy would be a false statement about
+            where the key and every prompt actually go. */}
         <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">
-          Paste your NovelAI token to start. It&apos;s stored only in this browser and sent straight to
-          NovelAI — never to us.
+          {isDirect ? (
+            <>
+              Paste your NovelAI token to start. It&apos;s stored only in this browser and sent straight
+              to NovelAI — never to us.
+            </>
+          ) : (
+            <>
+              Paste your access key to start. It&apos;s stored only in this browser and sent, along with
+              your prompts, to the host you&apos;ve configured below.
+            </>
+          )}
         </p>
       </div>
       <div className="flex flex-col gap-4">
         <div>
-          <Label htmlFor="nai-token">API token</Label>
+          <Label htmlFor="nai-token">{isDirect ? "NovelAI API token" : "Access key"}</Label>
           <div className="relative">
             <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <Input
               id="nai-token"
               type="password"
               autoComplete="off"
-              placeholder="pst-..."
+              placeholder={isDirect ? "pst-..." : "your access key"}
               className="pl-9 font-[family-name:var(--font-mono)] text-[13px]"
               value={token}
               onChange={(e) => setToken(e.target.value)}
