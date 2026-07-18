@@ -5,9 +5,8 @@ import { useStore } from "@/lib/store";
 import { isV4Model } from "@/lib/nai/models";
 import { Section, Field } from "./field";
 import { TagTextarea } from "./tag-textarea";
-import { focusRing } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
 import { PositionGrid } from "./position-grid";
 
@@ -37,18 +36,15 @@ export function CharactersTab() {
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={c.enabled} onCheckedChange={(v) => update(i, { enabled: v })} aria-label="Enable character" />
-                <button
-                  type="button"
-                  aria-label="Remove character"
+                <IconButton
+                  label="Remove character"
+                  size="sm"
+                  variant="subtle"
                   onClick={() => remove(i)}
-                  className={cn(
-                    "rounded-[6px] p-1 text-muted transition-colors duration-instant hover:bg-surface-3 hover:text-danger",
-                    focusRing,
-                    "focus-visible:ring-offset-surface",
-                  )}
+                  className="hover:text-danger"
                 >
-                  <Trash2 className="size-4" />
-                </button>
+                  <Trash2 />
+                </IconButton>
               </div>
             </div>
 

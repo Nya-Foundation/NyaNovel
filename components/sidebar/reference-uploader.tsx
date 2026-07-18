@@ -6,9 +6,8 @@ import { Upload, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseReference } from "@/lib/nai/client";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Slider } from "@/components/ui/slider";
-import { focusRing } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 /** Multi-image uploader for vibe transfer / director reference, with per-image sliders. */
 export function ReferenceUploader({
@@ -84,18 +83,15 @@ export function ReferenceUploader({
                   format={(v) => v.toFixed(2)}
                 />
               </div>
-              <button
-                type="button"
-                aria-label="Remove"
+              <IconButton
+                label="Remove reference"
+                size="sm"
+                variant="subtle"
                 onClick={() => remove(field, i)}
-                className={cn(
-                  "self-start rounded-[6px] p-1 text-muted transition-colors duration-instant hover:bg-surface-3 hover:text-danger",
-                  focusRing,
-                  "focus-visible:ring-offset-surface",
-                )}
+                className="self-start hover:text-danger"
               >
-                <X className="size-4" />
-              </button>
+                <X />
+              </IconButton>
             </div>
           ))}
         </div>

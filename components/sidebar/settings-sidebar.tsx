@@ -4,13 +4,14 @@ import { Loader2, Sparkles, PanelLeftClose, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, type SettingsTab } from "@/lib/store";
 import { DEFAULT_SETTINGS } from "@/lib/nai/types";
+import { modelLabel } from "@/lib/nai/models";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
-import { focusRing } from "@/components/ui/input";
+import { IconButton } from "@/components/ui/icon-button";
+import { PanelHeader } from "@/components/ui/panel-header";
 import { BasicTab } from "./basic-tab";
 import { AdvancedTab } from "./advanced-tab";
 import { CharactersTab } from "./characters-tab";
-import { cn } from "@/lib/utils";
 
 export function SettingsSidebar() {
   const activeTab = useStore((s) => s.activeTab);
@@ -42,30 +43,25 @@ export function SettingsSidebar() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border-soft p-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Collapse settings"
-            title="Collapse settings — ["
-            onClick={() => setUI({ settingsCollapsed: true })}
-            className={cn(
-              "shrink-0 rounded-[8px] p-2 text-muted transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
-              focusRing,
-              "focus-visible:ring-offset-surface",
-            )}
-          >
-            <PanelLeftClose className="size-4" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-fg">Composer</p>
-            <p className="truncate text-[11px] text-muted">Shape the next generation</p>
-          </div>
-          {/* Settings now survive a reload, which removes reload-as-reset — the universal recovery
-              gesture. This gives it back without competing with Generate. */}
-          {isDirty && !isGenerating && (
-            <button
-              type="button"
+      <div className="shrink-0 border-b border-border-soft">
+        <PanelHeader
+          title="Composer"
+          subtitle={`${modelLabel(settings.model, true)} · ${settings.width}×${settings.height} · ${settings.steps} steps`}
+          leading={
+            <IconButton
+              label="Collapse settings"
+              size="sm"
+              title="Collapse settings — ["
+              onClick={() => setUI({ settingsCollapsed: true })}
+            >
+              <PanelLeftClose />
+            </IconButton>
+          }
+          actions={isDirty && !isGenerating ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-[12px] text-muted"
               title="Reset every setting to its default"
               onClick={() => {
                 const prev = settings;
@@ -75,25 +71,21 @@ export function SettingsSidebar() {
                   action: { label: "Undo", onClick: () => useStore.setState({ settings: prev }) },
                 });
               }}
-              className={cn(
-                "shrink-0 rounded-[8px] px-2 py-1 text-[12px] font-semibold text-muted",
-                "transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
-                focusRing,
-                "focus-visible:ring-offset-surface",
-              )}
             >
               Reset
-            </button>
-          )}
-        </div>
+            </Button>
+          ) : undefined}
+        />
+        <div className="px-3 pb-3">
         <Segmented
           asTabs
           aria-label="Settings sections"
           options={TABS}
           value={activeTab}
           onValueChange={(v) => setUI({ activeTab: v })}
-          className="mt-2.5 flex w-full"
+          className="flex w-full"
         />
+        </div>
       </div>
 
       {/* Keyed so switching tabs cross-fades instead of hard-swapping a 360px column in one frame.

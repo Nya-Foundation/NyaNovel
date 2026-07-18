@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Toaster } from "sonner";
 import { fontVars } from "@/lib/fonts";
+import { AppToaster } from "@/components/app-toaster";
 import brandIcon from "@/assets/brand/icon-512.png";
 import socialBanner from "@/assets/brand/github-social-banner.png";
 import "./globals.css";
@@ -90,7 +90,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-bg text-fg antialiased">
         {children}
-        <Toaster position="bottom-right" theme="dark" richColors />
+        <AppToaster />
       </body>
     </html>
   );
