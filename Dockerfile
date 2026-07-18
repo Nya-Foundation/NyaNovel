@@ -15,11 +15,6 @@ RUN --mount=type=cache,id=nyanovel-bun,target=/root/.bun/install/cache,sharing=l
 FROM build-base AS builder
 COPY --link --from=deps /app/node_modules ./node_modules
 COPY --link . .
-
-# NEXT_PUBLIC_* values are compiled into the client/static metadata. Override this in CI or
-# Compose with the externally reachable origin (for example https://nyanovel.example.com).
-ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
-ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 RUN bun run build
 
 # Reuse the official Node build, but copy only the runtime binary and its two dynamic C++
@@ -38,7 +33,7 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.title="NyaNovel" \
       org.opencontainers.image.description="A refined browser client for NovelAI image generation, built with Next.js and nekoai-js." \
       org.opencontainers.image.source="https://github.com/Nya-Foundation/NyaNovel" \
-      org.opencontainers.image.licenses="AGPL-3.0-only"
+      org.opencontainers.image.licenses="MIT"
 
 COPY --link --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 COPY --link --from=node-runtime /usr/lib/libgcc_s.so.1 /usr/lib/libstdc++.so.6* /usr/lib/

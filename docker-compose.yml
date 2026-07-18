@@ -3,9 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Compiled into Open Graph/Twitter metadata. Override in production via the host env.
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:8080}
+    environment:
+      # Optional canonical origin. Without it, NyaNovel uses Host/X-Forwarded-* per request.
+      SITE_URL: ${SITE_URL:-}
     ports:
       - "8080:3000"
     restart: unless-stopped
