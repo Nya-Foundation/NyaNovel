@@ -4,7 +4,7 @@ import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useFocusTrap, useDelayedUnmount } from "@/lib/use-overlay";
-import { focusRing } from "./input";
+import { IconButton } from "./icon-button";
 import { cn } from "@/lib/utils";
 
 type ModalProps = {
@@ -87,18 +87,14 @@ export function Modal({
               {description && <p id={descId} className="mt-1 text-[13.5px] text-muted">{description}</p>}
             </div>
             {dismissible && onClose && (
-              <button
-                type="button"
+              <IconButton
+                label="Close"
+                size="sm"
                 onClick={onClose}
-                aria-label="Close"
-                className={cn(
-                  "-mr-1 -mt-1 rounded-[8px] p-1.5 text-muted transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
-                  focusRing,
-                  "focus-visible:ring-offset-surface",
-                )}
+                className="-mr-1 -mt-1"
               >
-                <X className="size-5" />
-              </button>
+                <X />
+              </IconButton>
             )}
           </div>
         )}

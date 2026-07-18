@@ -27,6 +27,12 @@ import {
 
 export type SettingsTab = "basic" | "advanced" | "characters";
 
+type RestoreSettingsOptions = {
+  message?: string;
+  /** A stable id lets rapid gallery browsing update one Undo toast instead of stacking many. */
+  toastId?: string;
+};
+
 export type StreamTile = {
   sampleIndex: number;
   dataUrl: string | null;
@@ -62,7 +68,7 @@ type Store = {
   settings: GenerationSettings;
   patchSettings: (patch: Partial<GenerationSettings>) => void;
   resetSettings: () => void;
-  restoreSettings: (s: GenerationSettings) => void;
+  restoreSettings: (s: GenerationSettings, options?: RestoreSettingsOptions) => void;
   addCharacter: () => void;
   updateCharacter: (i: number, patch: Partial<CharacterSetting>) => void;
   removeCharacter: (i: number) => void;
@@ -78,8 +84,8 @@ type Store = {
   selectedBatch: GalleryImage[] | null;
   selectedImage: GalleryImage | null;
   loadGallery: () => Promise<void>;
-  selectBatch: (batchId: number) => void;
-  selectImage: (img: GalleryImage) => void;
+  selectBatch: (batchId: number, loadRecipe?: boolean) => void;
+  selectImage: (img: GalleryImage, loadRecipe?: boolean) => void;
   deleteImage: (id: number) => Promise<void>;
   clearGallery: () => Promise<void>;
 
@@ -145,7 +151,7 @@ export const useStore = create<Store>()((set, get) => ({
   settings: DEFAULT_SETTINGS,
   patchSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
   resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
-  restoreSettings: (snapshot) => {
+  restoreSettings: (snapshot, options) => {
     // This replaces the prompt, the negative prompt, every character and every uploaded reference.
     // Its call sites are ~28px glyphs on hover overlays sitting one gap away from "copy seed" —
     // same visual weight, wildly different blast radius — so it needs the same undo affordance
@@ -159,7 +165,8 @@ export const useStore = create<Store>()((set, get) => ({
       prev.directorReference.length > 0;
 
     set({ settings: { ...DEFAULT_SETTINGS, ...snapshot } });
-    toast.success(`Restored — seed ${snapshot.seed}, ${snapshot.steps} steps`, {
+    toast.success(options?.message ?? `Restored — seed ${snapshot.seed}, ${snapshot.steps} steps`, {
+      id: options?.toastId,
       // Only offered when something was actually overwritten. On a fresh form — the common case
       // while browsing the gallery — restoring is harmless, and an Undo there is noise that
       // teaches people to ignore it.
@@ -222,12 +229,28 @@ export const useStore = create<Store>()((set, get) => ({
       set({ galleryStatus: "error", galleryError: e instanceof Error ? e.message : String(e) });
     }
   },
-  selectBatch: (batchId) => {
+  selectBatch: (batchId, loadRecipe = false) => {
     const { images } = get();
     const batch = images.filter((i) => i.batchId === batchId).sort((a, b) => a.batchIndex - b.batchIndex);
-    if (batch.length) set({ selectedBatch: batch, selectedImage: batch[0], focusedIndex: null });
+    if (batch.length) {
+      set({ selectedBatch: batch, selectedImage: batch[0], focusedIndex: null });
+      if (loadRecipe) {
+        get().restoreSettings(batch[0].settings, {
+          message: `Recipe loaded from gallery — seed ${batch[0].seed}`,
+          toastId: "recipe-loaded",
+        });
+      }
+    }
   },
-  selectImage: (img) => set({ selectedImage: img }),
+  selectImage: (img, loadRecipe = false) => {
+    set({ selectedImage: img });
+    if (loadRecipe) {
+      get().restoreSettings(img.settings, {
+        message: `Recipe loaded from gallery — seed ${img.seed}`,
+        toastId: "recipe-loaded",
+      });
+    }
+  },
   deleteImage: async (id) => {
     // Optimistic: drop from view immediately, hold the record in memory, and only touch IndexedDB
     // once the undo window closes. A misclick otherwise destroys an unreproducible image.

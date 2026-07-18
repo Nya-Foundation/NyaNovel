@@ -76,12 +76,14 @@ Director outputs return to the same local gallery and retain the source image's 
 - Inline NovelAI tag suggestions with category styling and post counts.
 - Suggestions inside main, undesired-content, and character prompt fields.
 - One-click seed reuse or complete settings restoration from any result.
+- Drag-and-drop NovelAI PNG recipe import, including V4 character prompts and positions.
 - Undo support when settings are replaced or an image is deleted.
 - Example prompts that append safely to work already in progress.
 
 ### Local gallery and review
 
 - IndexedDB-backed image history grouped by generation batch.
+- Selecting a gallery result automatically loads its saved generation recipe into the composer.
 - Batch filmstrip with mouse and keyboard navigation.
 - Focused lightbox with zoom and previous/next navigation.
 - Download, clipboard copy, copy seed, reuse settings, and delete actions.

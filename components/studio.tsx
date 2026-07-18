@@ -10,15 +10,9 @@ import { Canvas } from "./canvas/canvas";
 import { Lightbox } from "./canvas/lightbox";
 import { DirectorModal } from "./canvas/director-modal";
 import { GalleryPanel } from "./gallery/gallery-panel";
+import { IconButton } from "./ui/icon-button";
 import { ProgressRing } from "./ui/progress-ring";
-import { focusRing } from "./ui/input";
 import { cn } from "@/lib/utils";
-
-const railBtn = cn(
-  "rounded-[8px] p-2 text-muted transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
-  focusRing,
-  "focus-visible:ring-offset-surface",
-);
 
 export function Studio() {
   const init = useStore((s) => s.init);
@@ -111,32 +105,25 @@ export function Studio() {
               collapsed ? "opacity-100" : "pointer-events-none opacity-0",
             )}
           >
-            <button
-              type="button"
-              aria-label="Expand settings"
+            <IconButton
+              label="Expand settings"
               title="Expand settings — ["
               onClick={() => setUI({ settingsCollapsed: false })}
-              className={railBtn}
+              size="sm"
             >
-              <PanelLeftOpen className="size-4" />
-            </button>
+              <PanelLeftOpen />
+            </IconButton>
             {isGenerating ? (
               <ProgressRing progress={meanProgress} size={32} stroke={2.5} />
             ) : (
-              <button
-                type="button"
-                aria-label="Generate"
+              <IconButton
+                label="Generate"
                 title={`Generate${nSamples > 1 ? ` · ${nSamples}` : ""} — ⌘↵${prompt ? `\n${prompt.slice(0, 80)}` : ""}`}
                 onClick={() => void generate()}
-                className={cn(
-                  "flex size-9 items-center justify-center rounded-[9px] bg-accent text-on-accent shadow-[var(--glow-accent)]",
-                  "transition-[filter,transform] duration-fast ease-out hover:brightness-[1.07] active:scale-[0.96]",
-                  focusRing,
-                  "focus-visible:ring-offset-surface",
-                )}
+                variant="accent"
               >
-                <Sparkles className="size-[18px]" />
-              </button>
+                <Sparkles />
+              </IconButton>
             )}
           </div>
 
@@ -170,20 +157,20 @@ export function Studio() {
               galleryOpen ? "pointer-events-none opacity-0" : "opacity-100",
             )}
           >
-            <button
-              type="button"
-              aria-label="Open gallery"
+            <IconButton
+              label="Open gallery"
               title="Open gallery — ]"
               onClick={() => setUI({ galleryOpen: true })}
-              className={cn(railBtn, "relative")}
+              size="sm"
+              className="relative"
             >
-              <Images className="size-4" />
+              <Images />
               {galleryStatus === "ready" && imageCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-[family-name:var(--font-mono)] text-[10px] font-bold text-on-accent">
                   {imageCount > 99 ? "99+" : imageCount}
                 </span>
               )}
-            </button>
+            </IconButton>
           </div>
 
           <div

@@ -32,7 +32,7 @@ export function AdvancedTab() {
         </Field>
       </Section>
 
-      <Section title="Options">
+      <Section title="Options" description="Specialized sampling controls" collapsible defaultOpen={false}>
         <Field>
           <SwitchRow
             label="Dynamic thresholding"
@@ -51,11 +51,16 @@ export function AdvancedTab() {
         </Field>
       </Section>
 
-      <Section title="Vibe transfer">
+      <Section title="Vibe transfer" description={`${s.vibe.length} reference${s.vibe.length === 1 ? "" : "s"}`} collapsible defaultOpen={s.vibe.length > 0}>
         <ReferenceUploader field="vibe" emptyLabel="Transfer the vibe of reference images." />
       </Section>
 
-      <Section title="Director / character reference">
+      <Section
+        title="Director / character reference"
+        description={`${s.directorReference.length} reference${s.directorReference.length === 1 ? "" : "s"}`}
+        collapsible
+        defaultOpen={s.directorReference.length > 0}
+      >
         <ReferenceUploader field="directorReference" emptyLabel="Guide character features from a reference." />
       </Section>
     </>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { focusRing } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /**

@@ -2,7 +2,7 @@
 // (so they stay in sync with the SDK); labels mirror the wording of NovelAI's own UI.
 import { Model, Sampler, Noise, Resolution, EmotionOptions, RESOLUTION_DIMENSIONS } from "nekoai-js";
 
-export type Option<T extends string> = { value: T; label: string };
+type Option<T extends string> = { value: T; label: string };
 
 export const MODEL_OPTIONS: Option<Model>[] = [
   { value: Model.V4_5, label: "NAI Diffusion V4.5 Full" },
@@ -12,6 +12,11 @@ export const MODEL_OPTIONS: Option<Model>[] = [
   { value: Model.V3, label: "NAI Diffusion Anime V3" },
   { value: Model.FURRY, label: "NAI Diffusion Furry V3" },
 ];
+
+export function modelLabel(value: string, compact = false): string {
+  const label = MODEL_OPTIONS.find((option) => option.value === value)?.label ?? value;
+  return compact ? label.replace(/^NAI Diffusion /, "").replace(/ Full$/, "") : label;
+}
 
 /** V4/V4.5 models support multi-character prompts + positional coords. */
 export const V4_MODELS = new Set<Model>([
@@ -47,56 +52,28 @@ export const UC_PRESET_OPTIONS: Option<string>[] = [
   { value: "3", label: "None" },
 ];
 
-// Resolution presets, grouped by tier. Dimensions come from the SDK so a preset
-// selection can populate the width/height fields directly.
-export type ResolutionPreset = { value: Resolution; label: string; w: number; h: number };
-
-const dim = (r: Resolution): [number, number] => RESOLUTION_DIMENSIONS[r];
-
-export const RESOLUTION_GROUPS: { group: string; presets: ResolutionPreset[] }[] = [
-  {
-    group: "Normal",
-    presets: [
-      { value: Resolution.NORMAL_PORTRAIT, label: "Portrait", w: dim(Resolution.NORMAL_PORTRAIT)[0], h: dim(Resolution.NORMAL_PORTRAIT)[1] },
-      { value: Resolution.NORMAL_LANDSCAPE, label: "Landscape", w: dim(Resolution.NORMAL_LANDSCAPE)[0], h: dim(Resolution.NORMAL_LANDSCAPE)[1] },
-      { value: Resolution.NORMAL_SQUARE, label: "Square", w: dim(Resolution.NORMAL_SQUARE)[0], h: dim(Resolution.NORMAL_SQUARE)[1] },
-    ],
-  },
-  {
-    group: "Small",
-    presets: [
-      { value: Resolution.SMALL_PORTRAIT, label: "Portrait", w: dim(Resolution.SMALL_PORTRAIT)[0], h: dim(Resolution.SMALL_PORTRAIT)[1] },
-      { value: Resolution.SMALL_LANDSCAPE, label: "Landscape", w: dim(Resolution.SMALL_LANDSCAPE)[0], h: dim(Resolution.SMALL_LANDSCAPE)[1] },
-      { value: Resolution.SMALL_SQUARE, label: "Square", w: dim(Resolution.SMALL_SQUARE)[0], h: dim(Resolution.SMALL_SQUARE)[1] },
-    ],
-  },
-  {
-    group: "Large",
-    presets: [
-      { value: Resolution.LARGE_PORTRAIT, label: "Portrait", w: dim(Resolution.LARGE_PORTRAIT)[0], h: dim(Resolution.LARGE_PORTRAIT)[1] },
-      { value: Resolution.LARGE_LANDSCAPE, label: "Landscape", w: dim(Resolution.LARGE_LANDSCAPE)[0], h: dim(Resolution.LARGE_LANDSCAPE)[1] },
-      { value: Resolution.LARGE_SQUARE, label: "Square", w: dim(Resolution.LARGE_SQUARE)[0], h: dim(Resolution.LARGE_SQUARE)[1] },
-    ],
-  },
-  {
-    group: "Wallpaper",
-    presets: [
-      { value: Resolution.WALLPAPER_PORTRAIT, label: "Portrait", w: dim(Resolution.WALLPAPER_PORTRAIT)[0], h: dim(Resolution.WALLPAPER_PORTRAIT)[1] },
-      { value: Resolution.WALLPAPER_LANDSCAPE, label: "Landscape", w: dim(Resolution.WALLPAPER_LANDSCAPE)[0], h: dim(Resolution.WALLPAPER_LANDSCAPE)[1] },
-    ],
-  },
-];
-
-export const ALL_PRESETS: ResolutionPreset[] = RESOLUTION_GROUPS.flatMap((g) => g.presets);
-
-const PRESET_BY_KEY: Record<string, ResolutionPreset> = Object.fromEntries(
-  ALL_PRESETS.map((p) => [p.value as string, p]),
-);
-
 export const SIZE_TIERS = ["small", "normal", "large", "wallpaper"] as const;
-export const ASPECTS = ["portrait", "landscape", "square"] as const;
+const ASPECTS = ["portrait", "landscape", "square"] as const;
 export type SizeTier = (typeof SIZE_TIERS)[number];
 export type Aspect = (typeof ASPECTS)[number];
+
+type ResolutionPreset = { value: Resolution; label: string; w: number; h: number };
+
+// Derive the preset table from the SDK rather than duplicating every enum and dimension. The SDK
+// intentionally has no wallpaper-square entry, so that combination is filtered out.
+const ALL_PRESETS: ResolutionPreset[] = SIZE_TIERS.flatMap((tier) =>
+  ASPECTS.flatMap((aspect) => {
+    const value = `${tier}_${aspect}` as Resolution;
+    const dimensions = RESOLUTION_DIMENSIONS[value];
+    return dimensions
+      ? [{ value, label: aspect.charAt(0).toUpperCase() + aspect.slice(1), w: dimensions[0], h: dimensions[1] }]
+      : [];
+  }),
+);
+
+const PRESET_BY_KEY: Record<string, ResolutionPreset> = Object.fromEntries(
+  ALL_PRESETS.map((preset) => [preset.value as string, preset]),
+);
 
 /** Preset dimensions for a tier + aspect (Resolution values are `${tier}_${aspect}`). */
 export function presetDims(tier: string, aspect: string): ResolutionPreset | undefined {
@@ -104,7 +81,7 @@ export function presetDims(tier: string, aspect: string): ResolutionPreset | und
 }
 
 /** Find the preset whose dimensions match the given size, if any (else "custom"). */
-export function presetForSize(w: number, h: number): Resolution | null {
+function presetForSize(w: number, h: number): Resolution | null {
   return ALL_PRESETS.find((p) => p.w === w && p.h === h)?.value ?? null;
 }
 
@@ -145,5 +122,3 @@ export const EMOTION_OPTIONS: Option<EmotionOptions>[] = Object.values(EmotionOp
   value: e,
   label: e.charAt(0).toUpperCase() + e.slice(1),
 }));
-
-export { Model, Sampler, Noise, Resolution, EmotionOptions };

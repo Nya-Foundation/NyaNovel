@@ -3,20 +3,19 @@
 import { Download, Copy, Trash2, Wand2, RotateCcw, Hash, Maximize2, AlertTriangle, KeyRound } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { focusRing } from "@/components/ui/input";
-import { MODEL_OPTIONS } from "@/lib/nai/models";
+import { modelLabel } from "@/lib/nai/models";
 import { downloadDataUrl, copyImageToClipboard } from "@/lib/image-actions";
 import { StreamingGrid } from "./streaming-grid";
 import { cn } from "@/lib/utils";
 import type { GalleryImage } from "@/lib/db/gallery";
 
-const modelLabel = (v: string) => MODEL_OPTIONS.find((m) => m.value === v)?.label ?? v;
-
 const EXAMPLES = [
-  "1girl, cat ears, cherry blossoms, soft light, masterpiece",
-  "cyberpunk city, neon rain, cinematic, ultra detailed",
-  "cozy cafe, warm afternoon, watercolor, wlop",
+  { title: "Soft portrait", prompt: "1girl, cat ears, cherry blossoms, soft light, masterpiece" },
+  { title: "Neon city", prompt: "cyberpunk city, neon rain, cinematic, ultra detailed" },
+  { title: "Cozy watercolor", prompt: "cozy cafe, warm afternoon, watercolor, wlop" },
 ];
 
 function EmptyState() {
@@ -57,21 +56,22 @@ function EmptyState() {
           Describe your image and hit Generate. It streams in here and lands in your gallery.
         </p>
       </div>
-      <div className="relative flex max-w-lg flex-wrap justify-center gap-2">
-        {EXAMPLES.map((ex) => (
+      <div className="relative grid w-full max-w-2xl gap-2 sm:grid-cols-3">
+        {EXAMPLES.map((example) => (
           <button
-            key={ex}
+            key={example.title}
             type="button"
-            onClick={() => applyExample(ex)}
+            onClick={() => applyExample(example.prompt)}
             className={cn(
-              // No truncation: a suggestion cut off mid-phrase can't be evaluated, which is the
-              // one job these have.
-              "rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-3.5 py-1.5 text-[12.5px] text-fg-2 shadow-[var(--shadow-card)]",
-              "transition-[color,border-color,transform] duration-fast ease-out hover:border-border hover:text-fg hover:-translate-y-0.5",
+              "group rounded-[var(--radius-card)] border border-border-soft bg-surface-2 px-3.5 py-3 text-left shadow-[var(--shadow-card)]",
+              "transition-[color,border-color,background-color,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-accent/50 hover:bg-surface-3",
               focusRing,
             )}
           >
-            {ex}
+            <span className="block text-[12.5px] font-bold text-fg">{example.title}</span>
+            <span className="mt-0.5 block truncate text-[11.5px] text-muted group-hover:text-fg-2">
+              {example.prompt}
+            </span>
           </button>
         ))}
       </div>
@@ -84,35 +84,6 @@ function Meta({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-chip)] bg-surface-2 px-2.5 py-1 font-[family-name:var(--font-mono)] text-[11.5px] tabular-nums text-fg-2">
       {children}
     </span>
-  );
-}
-
-function ActionBtn({
-  label,
-  onClick,
-  danger,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "flex size-8 items-center justify-center rounded-[8px] text-fg-2 transition-colors duration-instant hover:bg-surface-3 [&_svg]:size-[17px]",
-        focusRing,
-        "focus-visible:ring-offset-surface",
-        danger ? "hover:text-danger" : "hover:text-fg",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -148,18 +119,14 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           className="relative max-h-full max-w-full cursor-zoom-in rounded-[var(--radius-card)] object-contain shadow-[var(--shadow-pop)] ring-1 ring-white/10"
           style={{ animation: "fadeIn var(--duration-base) var(--ease-out)" }}
         />
-        <button
-          type="button"
+        <IconButton
+          variant="overlay"
+          label="Open fullscreen preview"
           onClick={focusThis}
-          aria-label="Expand"
-          className={cn(
-            "absolute right-4 top-4 flex size-9 items-center justify-center rounded-[10px] bg-black/45 text-white/90 backdrop-blur-md sm:right-8 sm:top-8",
-            "transition-[background-color,transform] duration-fast ease-out hover:bg-black/65 hover:scale-105",
-            focusRing,
-          )}
+          className="absolute right-4 top-4 sm:right-8 sm:top-8"
         >
-          <Maximize2 className="size-[18px]" />
-        </button>
+          <Maximize2 />
+        </IconButton>
       </div>
 
       {batch.length > 1 && (
@@ -171,7 +138,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
             e.preventDefault();
             const i = batch.findIndex((b) => b.id === img.id);
             const next = e.key === "ArrowRight" ? (i + 1) % batch.length : (i - 1 + batch.length) % batch.length;
-            selectImage(batch[next]);
+            selectImage(batch[next], true);
             // Focus follows selection so the ring tracks the arrow keys.
             (document.getElementById(`batch-opt-${batch[next].id}`) as HTMLButtonElement | null)?.focus();
           }}
@@ -188,7 +155,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
                 aria-selected={active}
                 aria-label={`Result ${i + 1} of ${batch.length}, seed ${b.seed}`}
                 tabIndex={active ? 0 : -1}
-                onClick={() => selectImage(b)}
+                onClick={() => selectImage(b, true)}
                 className={cn(
                   // Same radius as the stage image above it — both frame the same picture and are
                   // on screen together, so a 10px-vs-14px disagreement is actually visible.
@@ -261,18 +228,18 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           >
             <RotateCcw className="size-4" /> <span className="hidden lg:inline">Reuse settings</span>
           </button>
-          <ActionBtn label="Copy seed to settings" onClick={() => patchSettings({ seed: img.seed })}>
+          <IconButton size="sm" label="Copy seed to settings" onClick={() => patchSettings({ seed: img.seed })}>
             <Hash />
-          </ActionBtn>
-          <ActionBtn label="Download" onClick={() => downloadDataUrl(img.dataUrl, img.filename)}>
+          </IconButton>
+          <IconButton size="sm" label="Download" onClick={() => downloadDataUrl(img.dataUrl, img.filename)}>
             <Download />
-          </ActionBtn>
-          <ActionBtn label="Copy image" onClick={() => copyImageToClipboard(img.dataUrl)}>
+          </IconButton>
+          <IconButton size="sm" label="Copy image" onClick={() => copyImageToClipboard(img.dataUrl)}>
             <Copy />
-          </ActionBtn>
-          <ActionBtn label="Delete" danger onClick={() => img.id && deleteImage(img.id)}>
+          </IconButton>
+          <IconButton size="sm" label="Delete" className="hover:text-danger" onClick={() => img.id && deleteImage(img.id)}>
             <Trash2 />
-          </ActionBtn>
+          </IconButton>
           </div>
         </div>
       </div>

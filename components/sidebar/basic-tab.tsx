@@ -22,6 +22,7 @@ import { SwitchRow } from "@/components/ui/switch";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { RecipeImporter } from "./recipe-importer";
 
 const MAX_SEED = 4294967295;
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
@@ -75,6 +76,15 @@ export function BasicTab() {
             onChange={(negativePrompt) => patch({ negativePrompt })}
           />
         </Field>
+      </Section>
+
+      <Section
+        title="Import from PNG"
+        description="Restore a NovelAI image recipe"
+        collapsible
+        defaultOpen={false}
+      >
+        <RecipeImporter />
       </Section>
 
       <Section title="Resolution">

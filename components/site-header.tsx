@@ -4,6 +4,7 @@ import { Images, PanelLeftOpen, Sparkles, Square } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { BrandLogo } from "./brand-logo";
 import { ThemeControls } from "./theme-controls";
+import { IconButton } from "./ui/icon-button";
 import { focusRing } from "./ui/input";
 import { cn } from "@/lib/utils";
 
@@ -22,19 +23,14 @@ export function SiteHeader() {
 
   return (
     <header className="relative z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border-soft bg-surface/95 px-2.5 shadow-[0_1px_0_0_var(--border-soft)] backdrop-blur-xl sm:px-4">
-      <button
-        type="button"
-        aria-label="Open settings"
+      <IconButton
+        label="Open settings"
         title="Open settings"
         onClick={() => setUI({ settingsCollapsed: false, galleryOpen: false })}
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-[9px] text-fg-2 transition-colors duration-instant hover:bg-surface-2 hover:text-fg xl:hidden",
-          focusRing,
-          "focus-visible:ring-offset-surface",
-        )}
+        className="xl:hidden"
       >
-        <PanelLeftOpen className="size-[18px]" />
-      </button>
+        <PanelLeftOpen />
+      </IconButton>
 
       <div className="flex min-w-0 items-center gap-2.5">
         <BrandLogo variant="mark" priority className="size-7 sm:hidden" />
@@ -81,24 +77,19 @@ export function SiteHeader() {
           <span className="hidden sm:inline">{connectionLabel}</span>
         </button>
         <ThemeControls />
-        <button
-          type="button"
-          aria-label="Open gallery"
+        <IconButton
+          label="Open gallery"
           title="Open gallery"
           onClick={() => setUI({ galleryOpen: true, settingsCollapsed: true })}
-          className={cn(
-            "relative flex size-9 shrink-0 items-center justify-center rounded-[9px] text-fg-2 transition-colors duration-instant hover:bg-surface-2 hover:text-fg xl:hidden",
-            focusRing,
-            "focus-visible:ring-offset-surface",
-          )}
+          className="relative xl:hidden"
         >
-          <Images className="size-[18px]" />
+          <Images />
           {imageCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-[family-name:var(--font-mono)] text-[9px] font-bold text-on-accent">
               {imageCount > 99 ? "99+" : imageCount}
             </span>
           )}
-        </button>
+        </IconButton>
       </div>
     </header>
   );
