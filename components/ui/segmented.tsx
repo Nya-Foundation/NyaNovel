@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { focusRing } from "./input";
 import { cn } from "@/lib/utils";
 
 type SegmentedProps<T extends string> = {
@@ -20,12 +22,21 @@ export function Segmented<T extends string>({
   "aria-label": ariaLabel,
 }: SegmentedProps<T>) {
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const baseId = useId();
+  const segId = (i: number) => `${baseId}-seg-${i}`;
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    let next: number | null = null;
+    if (e.key === "ArrowRight") next = (index + 1) % options.length;
+    else if (e.key === "ArrowLeft") next = (index - 1 + options.length) % options.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = options.length - 1;
+    if (next === null) return;
     e.preventDefault();
-    const next = e.key === "ArrowRight" ? (index + 1) % options.length : (index - 1 + options.length) % options.length;
     onValueChange(options[next].value);
+    // Move focus with the selection. Only the active segment is a tab stop, so without this focus
+    // stranded on a button that had just been given tabIndex={-1}.
+    requestAnimationFrame(() => document.getElementById(segId(next))?.focus());
   };
 
   return (
@@ -47,11 +58,12 @@ export function Segmented<T extends string>({
           transform: `translateX(calc(${index} * 100%))`,
         }}
       />
-      {options.map((opt) => {
+      {options.map((opt, i) => {
         const active = opt.value === value;
         return (
           <button
             key={opt.value}
+            id={segId(i)}
             type="button"
             role={asTabs ? "tab" : "radio"}
             aria-selected={asTabs ? active : undefined}
@@ -60,7 +72,16 @@ export function Segmented<T extends string>({
             onClick={() => onValueChange(opt.value)}
             className={cn(
               "relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[13px] font-semibold",
-              "transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+              "transition-colors duration-fast",
+              // This was the one control in the app without a ring offset, so its focus ring landed
+              // exactly on the travelling pill's own accent ring and all but vanished — and since
+              // only the active segment is a tab stop, that was the *only* focus signal a keyboard
+              // user ever got on the sidebar's primary nav.
+              // Deliberate exception: offset-1, not the usual offset-2. The container gutter is 4px,
+              // so ring-2 + offset-2 would sit flush against its border and read as the whole strip
+              // filling in. Offset colour is surface-2 because that's the container behind it.
+              focusRing,
+              "focus-visible:ring-offset-1 focus-visible:ring-offset-surface-2",
               active ? "text-fg" : "text-fg-2 hover:text-fg",
             )}
           >

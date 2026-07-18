@@ -68,7 +68,7 @@ export function CharactersTab() {
               </div>
               <div className="w-20">
                 <div className="mb-1 text-[11px] text-muted">Position</div>
-                <PositionGrid center={c.center} onChange={(center) => update(i, { center })} />
+                <PositionGrid label={`Character ${i + 1} position`} center={c.center} onChange={(center) => update(i, { center })} />
               </div>
             </div>
           </div>

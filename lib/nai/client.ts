@@ -8,7 +8,7 @@ import {
   type MsgpackEvent,
   type EmotionOptions,
 } from "nekoai-js";
-import { type GenerationSettings, toMetadata } from "./types";
+import { DEFAULT_SETTINGS, type GenerationSettings, toMetadata } from "./types";
 
 // ---- Connection config (persisted in localStorage; the token never leaves the browser) ----
 
@@ -53,6 +53,73 @@ export function saveConnection(cfg: ConnectionConfig) {
 
 export function clearConnection() {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+}
+
+// ---- Settings persistence ----
+//
+// Deliberately hand-rolled rather than zustand's `persist` middleware: the store is created at
+// module scope under SSR, and `persist` rehydrates synchronously at creation, so the server HTML
+// (defaults) and the first client render (restored) would disagree. Deferring the read into
+// `init()` is the same pattern `loadConnection` already uses.
+
+const SETTINGS_KEY = "nya-settings";
+
+/** Reference images are dropped on save — see saveSettings. */
+type PersistedSettings = Omit<GenerationSettings, "vibe" | "directorReference">;
+
+export function loadSettings(): GenerationSettings | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return null;
+    // Merged over the defaults so a field added to GenerationSettings later can never come back
+    // as undefined from an older stored payload.
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GenerationSettings>) };
+  } catch {
+    return null;
+  }
+}
+
+export function saveSettings(s: GenerationSettings) {
+  if (typeof localStorage === "undefined") return;
+  // `vibe` and `directorReference` each carry a full base64 payload *and* a preview data-URL, so a
+  // handful of references blows the ~5MB quota. A QuotaExceededError here would take down
+  // persistence of everything else — including the prompt — so dropping them is the correct
+  // behaviour rather than a compromise.
+  const { vibe: _v, directorReference: _d, ...rest } = s;
+  const persisted: PersistedSettings = rest;
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(persisted));
+  } catch {
+    // Persistence the user never asked for must not interrupt them.
+  }
+}
+
+const UI_KEY = "nya-ui";
+
+export type UIPrefs = { settingsCollapsed: boolean; activeTab: "basic" | "advanced" | "characters"; galleryOpen: boolean };
+
+export function loadUIPrefs(): UIPrefs | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(UI_KEY);
+    return raw ? (JSON.parse(raw) as UIPrefs) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Panel layout only. Notably absent: `focusedIndex` — restoring an open lightbox over an image the
+ * user didn't ask to see is hostile — and `showConnect`, which is derived from whether a client exists.
+ */
+export function saveUIPrefs(p: UIPrefs) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(UI_KEY, JSON.stringify(p));
+  } catch {
+    /* non-essential */
+  }
 }
 
 export type TokenVerdict = "ok" | "invalid" | "unknown";

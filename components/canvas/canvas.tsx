@@ -20,6 +20,23 @@ const EXAMPLES = [
 
 function EmptyState() {
   const patch = useStore((s) => s.patchSettings);
+  const prompt = useStore((s) => s.settings.prompt);
+  const setUI = useStore((s) => s.setUI);
+
+  // Appends rather than replaces: this screen also renders for a returning user who has already
+  // typed a prompt, and the chip used to destroy it with no undo. Expanding the sidebar and
+  // focusing the field makes the result visible — with the sidebar collapsed via `[`, the
+  // destination isn't on screen at all and the click looked dead.
+  const applyExample = (ex: string) => {
+    patch({ prompt: prompt.trim() ? `${prompt.replace(/,\s*$/, "")}, ${ex}` : ex });
+    setUI({ settingsCollapsed: false, activeTab: "basic" });
+    requestAnimationFrame(() => {
+      const el = document.getElementById("prompt") as HTMLTextAreaElement | null;
+      el?.focus();
+      el?.setSelectionRange(el.value.length, el.value.length);
+    });
+  };
+
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-5 overflow-hidden p-8 text-center">
       {/* soft ambient accent glow so the stage is never a dead black void */}
@@ -44,9 +61,11 @@ function EmptyState() {
           <button
             key={ex}
             type="button"
-            onClick={() => patch({ prompt: ex })}
+            onClick={() => applyExample(ex)}
             className={cn(
-              "max-w-[220px] truncate rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-3.5 py-1.5 text-[12.5px] text-fg-2 shadow-[var(--shadow-card)]",
+              // No truncation: a suggestion cut off mid-phrase can't be evaluated, which is the
+              // one job these have.
+              "rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-3.5 py-1.5 text-[12.5px] text-fg-2 shadow-[var(--shadow-card)]",
               "transition-[color,border-color,transform] duration-fast ease-out hover:border-border hover:text-fg hover:-translate-y-0.5",
               focusRing,
             )}

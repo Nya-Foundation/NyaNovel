@@ -1,7 +1,9 @@
 "use client";
 
 import { Loader2, Sparkles, PanelLeftClose, Square } from "lucide-react";
+import { toast } from "sonner";
 import { useStore, type SettingsTab } from "@/lib/store";
+import { DEFAULT_SETTINGS } from "@/lib/nai/types";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { focusRing } from "@/components/ui/input";
@@ -21,6 +23,11 @@ export function SettingsSidebar() {
   const nSamples = useStore((s) => s.settings.nSamples);
   const characterCount = useStore((s) => s.settings.characters.filter((c) => c.enabled).length);
   const referenceCount = useStore((s) => s.settings.vibe.length + s.settings.directorReference.length);
+  const settings = useStore((s) => s.settings);
+  const resetSettings = useStore((s) => s.resetSettings);
+  // Reset only appears once there's something to reset — on a clean form it would be a control
+  // that visibly does nothing.
+  const isDirty = JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS);
 
   // Badges announce state the tab is currently hiding — otherwise enabling three characters and
   // returning to Basic looks identical to a clean slate.
@@ -50,6 +57,33 @@ export function SettingsSidebar() {
           <PanelLeftClose className="size-4" />
         </button>
         <Segmented asTabs aria-label="Settings sections" options={TABS} value={activeTab} onValueChange={(v) => setUI({ activeTab: v })} className="flex-1" />
+        {/* Settings now survive a reload, which removes reload-as-reset — the universal recovery
+            gesture. This gives it back. Text weight, not a button: it must never compete with
+            Generate. */}
+        {isDirty && !isGenerating && (
+          <button
+            type="button"
+            title="Reset every setting to its default"
+            onClick={() => {
+              const prev = settings;
+              resetSettings();
+              toast("Settings reset", {
+                duration: 6000,
+                // Restores silently — restoreSettings() would fire its own "Restored" toast on top
+                // of this one.
+                action: { label: "Undo", onClick: () => useStore.setState({ settings: prev }) },
+              });
+            }}
+            className={cn(
+              "shrink-0 rounded-[8px] px-2 py-1 text-[12px] font-semibold text-muted",
+              "transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
+              focusRing,
+              "focus-visible:ring-offset-surface",
+            )}
+          >
+            Reset
+          </button>
+        )}
       </div>
 
       {/* Keyed so switching tabs cross-fades instead of hard-swapping a 360px column in one frame.

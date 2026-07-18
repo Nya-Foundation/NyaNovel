@@ -9,6 +9,10 @@ import {
   saveConnection,
   clearConnection,
   verifyToken,
+  loadSettings,
+  saveSettings,
+  loadUIPrefs,
+  saveUIPrefs,
   type ConnectionConfig,
 } from "@/lib/nai/client";
 import { DEFAULT_SETTINGS, type GenerationSettings, type ReferenceImage, type CharacterSetting } from "@/lib/nai/types";
@@ -142,8 +146,27 @@ export const useStore = create<Store>()((set, get) => ({
   patchSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
   resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
   restoreSettings: (snapshot) => {
+    // This replaces the prompt, the negative prompt, every character and every uploaded reference.
+    // Its call sites are ~28px glyphs on hover overlays sitting one gap away from "copy seed" —
+    // same visual weight, wildly different blast radius — so it needs the same undo affordance
+    // deleteImage already has.
+    const prev = get().settings;
+    const hadWork =
+      prev.prompt.trim() !== "" ||
+      prev.negativePrompt.trim() !== "" ||
+      prev.characters.length > 0 ||
+      prev.vibe.length > 0 ||
+      prev.directorReference.length > 0;
+
     set({ settings: { ...DEFAULT_SETTINGS, ...snapshot } });
-    toast.success(`Restored — seed ${snapshot.seed}, ${snapshot.steps} steps`);
+    toast.success(`Restored — seed ${snapshot.seed}, ${snapshot.steps} steps`, {
+      // Only offered when something was actually overwritten. On a fresh form — the common case
+      // while browsing the gallery — restoring is harmless, and an Undo there is noise that
+      // teaches people to ignore it.
+      ...(hadWork
+        ? { duration: 6000, action: { label: "Undo", onClick: () => set({ settings: prev }) } }
+        : {}),
+    });
   },
   addCharacter: () =>
     set((s) => ({
@@ -219,10 +242,32 @@ export const useStore = create<Store>()((set, get) => ({
     set({ images });
     if (prevBatch) {
       const batch = prevBatch.filter((i) => i.id !== id);
-      if (batch.length) set({ selectedBatch: batch, selectedImage: batch[0] });
-      else if (images.length) get().selectBatch(images[0].batchId);
+      if (batch.length) {
+        // Hold your place. This used to snap to batch[0] after every removal, so culling a batch
+        // of 8 down to 1 meant delete → lose the image you were judging → navigate back → repeat.
+        // If the selection survived, keep it; otherwise take the neighbour that slid into the
+        // deleted slot.
+        const stillThere = prevSelected && batch.some((i) => i.id === prevSelected.id);
+        const deletedAt = prevBatch.findIndex((i) => i.id === id);
+        const next = stillThere
+          ? prevSelected
+          : batch[Math.min(Math.max(deletedAt, 0), batch.length - 1)];
+        set({ selectedBatch: batch, selectedImage: next });
+      } else if (images.length) get().selectBatch(images[0].batchId);
       else set({ selectedBatch: null, selectedImage: null });
     }
+
+    // Undo re-inserts this one image at its original index rather than restoring a whole array
+    // snapshot. Each delete used to close over its own copy of `images`, so two deletes inside the
+    // 6s window left two stale closures — undoing the first resurrected the second deleted image
+    // and orphaned its pending dbDelete, leaving a phantom that reappeared on reload.
+    const imageIndex = prevImages.findIndex((i) => i.id === id);
+    const batchIndex = prevBatch?.findIndex((i) => i.id === id) ?? -1;
+    const reinsert = <T extends { id?: number }>(list: T[], item: T, at: number) => {
+      const copy = list.slice();
+      copy.splice(Math.min(Math.max(at, 0), copy.length), 0, item);
+      return copy;
+    };
 
     let undone = false;
     toast("Image deleted", {
@@ -231,7 +276,14 @@ export const useStore = create<Store>()((set, get) => ({
         label: "Undo",
         onClick: () => {
           undone = true;
-          set({ images: prevImages, selectedBatch: prevBatch, selectedImage: prevSelected });
+          set((s) => ({
+            images: reinsert(s.images, doomed, imageIndex),
+            selectedBatch:
+              s.selectedBatch && batchIndex >= 0
+                ? reinsert(s.selectedBatch, doomed, batchIndex)
+                : s.selectedBatch,
+            selectedImage: doomed,
+          }));
         },
       },
       onAutoClose: () => {
@@ -243,8 +295,20 @@ export const useStore = create<Store>()((set, get) => ({
     });
   },
   clearGallery: async () => {
-    await clearImages();
-    set({ images: [], selectedBatch: null, selectedImage: null });
+    // clearImages() throws on quota, private browsing and corruption. Unhandled, the confirm modal
+    // closed as if it had worked while every image was still there — loadGallery already treats
+    // exactly this failure as worth a dedicated error state, so route into the same one.
+    const n = get().images.length;
+    try {
+      await clearImages();
+      set({ images: [], selectedBatch: null, selectedImage: null });
+      toast.success(`Deleted ${n} image${n === 1 ? "" : "s"}`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("Failed to clear gallery", e);
+      set({ galleryStatus: "error", galleryError: message });
+      toast.error(`Couldn't delete your images: ${message}`);
+    }
   },
 
   // ---- generation ----
@@ -473,6 +537,13 @@ export const useStore = create<Store>()((set, get) => ({
   // ---- lifecycle ----
   init: async () => {
     const cfg = loadConnection();
+    // The recipe is the one piece of state the user actually authored, and it was the only thing
+    // init() didn't restore — so ⌘R wiped it, one key away from the ⌘↵ generate gesture.
+    const savedSettings = loadSettings();
+    if (savedSettings) set({ settings: savedSettings });
+    const savedUI = loadUIPrefs();
+    if (savedUI) set(savedUI);
+
     if (cfg) {
       // Trust the stored token immediately so the app is usable on first paint, then check it in
       // the background. A revoked or expired key otherwise shows "Connected" forever and only
@@ -493,3 +564,27 @@ export const useStore = create<Store>()((set, get) => ({
     await get().loadGallery();
   },
 }));
+
+// Persist the recipe and the panel layout. Debounced rather than per-keystroke — typing a prompt
+// would otherwise serialise the whole settings object on every character.
+if (typeof window !== "undefined") {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let last: GenerationSettings | null = null;
+  let lastUI = "";
+
+  useStore.subscribe((s) => {
+    const uiKey = `${s.settingsCollapsed}|${s.activeTab}|${s.galleryOpen}`;
+    if (s.settings === last && uiKey === lastUI) return;
+    last = s.settings;
+    lastUI = uiKey;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      saveSettings(s.settings);
+      saveUIPrefs({
+        settingsCollapsed: s.settingsCollapsed,
+        activeTab: s.activeTab,
+        galleryOpen: s.galleryOpen,
+      });
+    }, 400);
+  });
+}
