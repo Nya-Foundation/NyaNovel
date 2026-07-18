@@ -147,12 +147,15 @@ bun run start
 
 The server listens on port `3000` by default.
 
-`NEXT_PUBLIC_SITE_URL` is a build-time value used to create absolute Open Graph and Twitter image
-URLs. Set it to the public origin when building a deployed instance:
+Social metadata is origin-aware at runtime. NyaNovel uses `Host`, `X-Forwarded-Host`, and
+`X-Forwarded-Proto` to produce absolute Open Graph and Twitter image URLs, so the same build can run
+on different domains without modification.
+
+If you want to force a canonical public origin, set the optional server-side `SITE_URL` variable
+when starting the application—no rebuild is required:
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com bun run build
-bun run start
+SITE_URL=https://nyanovel.example.com bun run start
 ```
 
 ## Docker
@@ -169,20 +172,27 @@ docker compose up --build
 
 Open [http://localhost:8080](http://localhost:8080).
 
-For a public deployment, provide the externally reachable origin before building:
+Behind a correctly configured reverse proxy, no origin configuration is required. You can optionally
+force a canonical origin at runtime:
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com docker compose up -d --build
+SITE_URL=https://nyanovel.example.com docker compose up -d --build
 ```
 
 ### Docker CLI
 
 ```bash
-docker build \
-  --build-arg NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com \
-  -t nyanovel .
+docker build -t nyanovel .
 
 docker run --rm -p 8080:3000 nyanovel
+```
+
+Optional canonical-origin override:
+
+```bash
+docker run --rm -p 8080:3000 \
+  -e SITE_URL=https://nyanovel.example.com \
+  nyanovel
 ```
 
 ## Privacy and data
@@ -274,10 +284,11 @@ custom host, verify both the host URL and the credential expected by that host.
 The gallery belongs to the exact browser profile and site origin where the images were generated.
 Check that site storage was not cleared and that you are using the same protocol, hostname, and port.
 
-### Shared links use `localhost` in their preview metadata
+### Shared links use the wrong host or protocol in their preview metadata
 
-Rebuild with `NEXT_PUBLIC_SITE_URL` set to the deployment's public origin. This value is compiled at
-build time and cannot be corrected by changing only the runtime environment.
+Configure your reverse proxy to pass `Host` or `X-Forwarded-Host` and `X-Forwarded-Proto`. If that is
+not possible, set `SITE_URL` to the canonical public origin and restart the container. Rebuilding the
+image is not required.
 
 ### Generation cannot reach a custom host
 
