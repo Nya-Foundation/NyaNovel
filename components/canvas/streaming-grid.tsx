@@ -50,7 +50,7 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
   const stalled = tiles.every((t) => t.status === "initializing") && elapsed > 15000;
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center overflow-auto p-6">
+    <div className="relative flex h-full flex-col items-center justify-center overflow-auto p-3 sm:p-6">
       {/* The image you were looking at when you pressed Generate, held as ambient context so the
           stage never blanks mid-commit. Same treatment as the BatchView backdrop. */}
       {backdrop && (
@@ -63,7 +63,7 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
         />
       )}
 
-      <div className="relative mb-3 flex items-center gap-2 text-[12.5px]">
+      <div className="relative mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[12.5px]">
         <span className="font-semibold text-fg">
           {stalled
             ? `Still waiting — ${isDirect ? "NovelAI" : "the host"} may be busy`
@@ -76,7 +76,7 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
         </span>
       </div>
 
-      <div className={cn("relative grid w-full max-w-4xl gap-4", gridCols(tiles.length))}>
+      <div className={cn("relative grid w-full max-w-4xl gap-2 sm:gap-4", gridCols(tiles.length))}>
         {tiles.map((t) => (
           <div
             key={t.sampleIndex}

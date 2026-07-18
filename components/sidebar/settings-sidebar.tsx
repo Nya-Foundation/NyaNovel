@@ -42,48 +42,58 @@ export function SettingsSidebar() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border-soft p-3">
-        <button
-          type="button"
-          aria-label="Collapse settings"
-          title="Collapse settings — ["
-          onClick={() => setUI({ settingsCollapsed: true })}
-          className={cn(
-            "shrink-0 rounded-[8px] p-2 text-muted transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
-            focusRing,
-            "focus-visible:ring-offset-surface",
-          )}
-        >
-          <PanelLeftClose className="size-4" />
-        </button>
-        <Segmented asTabs aria-label="Settings sections" options={TABS} value={activeTab} onValueChange={(v) => setUI({ activeTab: v })} className="flex-1" />
-        {/* Settings now survive a reload, which removes reload-as-reset — the universal recovery
-            gesture. This gives it back. Text weight, not a button: it must never compete with
-            Generate. */}
-        {isDirty && !isGenerating && (
+      <div className="shrink-0 border-b border-border-soft p-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            title="Reset every setting to its default"
-            onClick={() => {
-              const prev = settings;
-              resetSettings();
-              toast("Settings reset", {
-                duration: 6000,
-                // Restores silently — restoreSettings() would fire its own "Restored" toast on top
-                // of this one.
-                action: { label: "Undo", onClick: () => useStore.setState({ settings: prev }) },
-              });
-            }}
+            aria-label="Collapse settings"
+            title="Collapse settings — ["
+            onClick={() => setUI({ settingsCollapsed: true })}
             className={cn(
-              "shrink-0 rounded-[8px] px-2 py-1 text-[12px] font-semibold text-muted",
-              "transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
+              "shrink-0 rounded-[8px] p-2 text-muted transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
               focusRing,
               "focus-visible:ring-offset-surface",
             )}
           >
-            Reset
+            <PanelLeftClose className="size-4" />
           </button>
-        )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-fg">Composer</p>
+            <p className="truncate text-[11px] text-muted">Shape the next generation</p>
+          </div>
+          {/* Settings now survive a reload, which removes reload-as-reset — the universal recovery
+              gesture. This gives it back without competing with Generate. */}
+          {isDirty && !isGenerating && (
+            <button
+              type="button"
+              title="Reset every setting to its default"
+              onClick={() => {
+                const prev = settings;
+                resetSettings();
+                toast("Settings reset", {
+                  duration: 6000,
+                  action: { label: "Undo", onClick: () => useStore.setState({ settings: prev }) },
+                });
+              }}
+              className={cn(
+                "shrink-0 rounded-[8px] px-2 py-1 text-[12px] font-semibold text-muted",
+                "transition-colors duration-instant hover:bg-surface-2 hover:text-fg",
+                focusRing,
+                "focus-visible:ring-offset-surface",
+              )}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <Segmented
+          asTabs
+          aria-label="Settings sections"
+          options={TABS}
+          value={activeTab}
+          onValueChange={(v) => setUI({ activeTab: v })}
+          className="mt-2.5 flex w-full"
+        />
       </div>
 
       {/* Keyed so switching tabs cross-fades instead of hard-swapping a 360px column in one frame.

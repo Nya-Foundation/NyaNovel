@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { fontVars } from "@/lib/fonts";
+import brandIcon from "@/assets/brand/icon-512.png";
+import socialBanner from "@/assets/brand/github-social-banner.png";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "NyaNovel — AI image generation",
     template: "%s · NyaNovel",
@@ -11,6 +17,23 @@ export const metadata: Metadata = {
   description:
     "A fast, refined browser client for NovelAI image generation — prompts, characters, vibe transfer, director tools and a local gallery.",
   applicationName: "NyaNovel",
+  icons: {
+    icon: [{ url: brandIcon.src, type: "image/png", sizes: "512x512" }],
+    apple: [{ url: brandIcon.src, type: "image/png", sizes: "512x512" }],
+  },
+  openGraph: {
+    type: "website",
+    siteName: "NyaNovel",
+    title: "NyaNovel — AI image generation, refined",
+    description: "Fast controls, live streaming, and local-first privacy for NovelAI image generation.",
+    images: [{ url: socialBanner.src, width: 1280, height: 640, alt: "NyaNovel — AI image generation, refined" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NyaNovel — AI image generation, refined",
+    description: "Fast controls, live streaming, and local-first privacy for NovelAI image generation.",
+    images: [socialBanner.src],
+  },
 };
 
 // No-flash theme init: read the saved mode/accent before first paint so the page

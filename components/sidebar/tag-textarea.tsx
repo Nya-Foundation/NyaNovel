@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { TagSuggestion } from "nekoai-js";
 import { useStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,10 +19,11 @@ type Props = {
   onChange: (v: string) => void;
   placeholder?: string;
   className?: string;
+  "aria-label"?: string;
 };
 
 /** Textarea with inline NovelAI tag autocomplete (suggestTags). */
-export function TagTextarea({ id, value, onChange, placeholder, className }: Props) {
+export function TagTextarea({ id, value, onChange, placeholder, className, "aria-label": ariaLabel }: Props) {
   const client = useStore((s) => s.client);
   const listId = useId();
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -35,6 +36,32 @@ export function TagTextarea({ id, value, onChange, placeholder, className }: Pro
   const [open, setOpen] = useState(false);
   const tokenStart = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Grow with wrapped content, then hand scrolling back to the textarea at its CSS max-height.
+   * Measuring from `auto` is what lets the field shrink again after reset/delete, while the small
+   * border correction keeps a border-box textarea from gaining a permanent 2px scrollbar.
+   */
+  const resizeToContent = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const borders = el.offsetHeight - el.clientHeight;
+    el.style.height = `${el.scrollHeight + borders}px`;
+    el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
+  }, []);
+
+  // Layout effect avoids a one-frame flash at the old height when settings are restored, reset, or
+  // replaced from the gallery. Normal input and paste flow through the same value update.
+  useLayoutEffect(() => {
+    resizeToContent();
+  }, [value, resizeToContent]);
+
+  // Wrapped line count changes with the drawer/viewport width even when the value does not.
+  useEffect(() => {
+    window.addEventListener("resize", resizeToContent);
+    return () => window.removeEventListener("resize", resizeToContent);
+  }, [resizeToContent]);
 
   const query = (val: string, cursor: number) => {
     if (!client) return;
@@ -111,13 +138,18 @@ export function TagTextarea({ id, value, onChange, placeholder, className }: Pro
         id={id}
         ref={ref}
         role="combobox"
+        aria-label={ariaLabel}
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         aria-autocomplete="list"
         aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
         value={value}
         placeholder={placeholder}
-        className={className}
+        className={cn(
+          "max-h-[min(45dvh,28rem)] resize-none overflow-y-hidden",
+          "[scrollbar-color:var(--border)_transparent] [scrollbar-width:thin]",
+          className,
+        )}
         onChange={(e) => {
           onChange(e.target.value);
           query(e.target.value, e.target.selectionStart ?? e.target.value.length);

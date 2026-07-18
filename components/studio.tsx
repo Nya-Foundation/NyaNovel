@@ -52,8 +52,16 @@ export function Studio() {
       // Rail toggles — skip while typing, or they'd swallow the brackets.
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if (e.key === "[") s.setUI({ settingsCollapsed: !s.settingsCollapsed });
-      if (e.key === "]") s.setUI({ galleryOpen: !s.galleryOpen });
+      const compact = window.matchMedia("(max-width: 1279px)").matches;
+      if (e.key === "Escape" && compact && (!s.settingsCollapsed || s.galleryOpen)) {
+        s.setUI({ settingsCollapsed: true, galleryOpen: false });
+      }
+      if (e.key === "[") {
+        s.setUI({ settingsCollapsed: !s.settingsCollapsed, ...(compact ? { galleryOpen: false } : {}) });
+      }
+      if (e.key === "]") {
+        s.setUI({ galleryOpen: !s.galleryOpen, ...(compact ? { settingsCollapsed: true } : {}) });
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -64,16 +72,32 @@ export function Studio() {
     : 0;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <SiteHeader />
-      <main className="flex min-h-0 flex-1">
+      <main className="relative flex min-h-0 flex-1 isolate">
+        {/* Compact layouts promote the canvas to the primary surface and turn both dense panels
+            into drawers. One shared scrim keeps the relationship obvious and gives pointer users
+            a generous close target. Wide screens retain the always-visible workstation. */}
+        <button
+          type="button"
+          inert={collapsed && !galleryOpen}
+          tabIndex={!collapsed || galleryOpen ? 0 : -1}
+          aria-hidden={collapsed && !galleryOpen}
+          aria-label="Close open panel"
+          onClick={() => setUI({ settingsCollapsed: true, galleryOpen: false })}
+          className={cn(
+            "fixed inset-x-0 bottom-0 top-14 z-20 bg-black/45 backdrop-blur-[2px] transition-opacity duration-fast xl:hidden",
+            !collapsed || galleryOpen ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+        />
+
         {/* One element that tweens its width — collapsing used to swap two DOM subtrees, teleporting
             316px of layout in a single frame. */}
         <aside
           className={cn(
-            "relative z-10 shrink-0 overflow-hidden border-r border-border-soft bg-surface shadow-[6px_0_30px_-20px_rgba(0,0,0,0.6)]",
-            "transition-[width] duration-slow ease-standard",
-            collapsed ? "w-11" : "w-[360px]",
+            "fixed bottom-0 left-0 top-14 z-30 w-[min(360px,calc(100vw-2rem))] shrink-0 overflow-hidden border-r border-border-soft bg-surface shadow-[var(--shadow-panel)]",
+            "transition-transform duration-slow ease-standard xl:relative xl:inset-auto xl:z-10 xl:shadow-[6px_0_30px_-20px_rgba(0,0,0,0.6)] xl:transition-[width]",
+            collapsed ? "-translate-x-full xl:w-11 xl:translate-x-0" : "translate-x-0 xl:w-[360px]",
           )}
         >
           {/* Rail: keeps the primary action instead of amputating it. */}
@@ -83,7 +107,7 @@ export function Studio() {
           <div
             inert={!collapsed}
             className={cn(
-              "absolute inset-y-0 left-0 flex w-11 flex-col items-center gap-2 py-3 transition-opacity duration-fast",
+              "absolute inset-y-0 left-0 hidden w-11 flex-col items-center gap-2 py-3 transition-opacity duration-fast xl:flex",
               collapsed ? "opacity-100" : "pointer-events-none opacity-0",
             )}
           >
@@ -120,7 +144,7 @@ export function Studio() {
           <div
             inert={collapsed}
             className={cn(
-              "h-full w-[360px] transition-opacity duration-fast",
+              "h-full w-full transition-opacity duration-fast xl:w-[360px]",
               collapsed ? "pointer-events-none opacity-0" : "opacity-100",
             )}
           >
@@ -128,21 +152,21 @@ export function Studio() {
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1 bg-bg" aria-busy={isGenerating}>
+        <section className="relative z-0 min-w-0 flex-1 bg-bg" aria-busy={isGenerating}>
           <Canvas />
         </section>
 
         <aside
           className={cn(
-            "relative z-10 shrink-0 overflow-hidden border-l border-border-soft bg-surface shadow-[-6px_0_30px_-20px_rgba(0,0,0,0.6)]",
-            "transition-[width] duration-slow ease-standard",
-            galleryOpen ? "w-[280px]" : "w-11",
+            "fixed bottom-0 right-0 top-14 z-30 w-[min(320px,calc(100vw-2rem))] shrink-0 overflow-hidden border-l border-border-soft bg-surface shadow-[var(--shadow-panel)]",
+            "transition-transform duration-slow ease-standard xl:relative xl:inset-auto xl:z-10 xl:shadow-[-6px_0_30px_-20px_rgba(0,0,0,0.6)] xl:transition-[width]",
+            galleryOpen ? "translate-x-0 xl:w-[320px]" : "translate-x-full xl:w-11 xl:translate-x-0",
           )}
         >
           <div
             inert={galleryOpen}
             className={cn(
-              "absolute inset-y-0 left-0 flex w-11 flex-col items-center py-3 transition-opacity duration-fast",
+              "absolute inset-y-0 left-0 hidden w-11 flex-col items-center py-3 transition-opacity duration-fast xl:flex",
               galleryOpen ? "pointer-events-none opacity-0" : "opacity-100",
             )}
           >
@@ -165,7 +189,7 @@ export function Studio() {
           <div
             inert={!galleryOpen}
             className={cn(
-              "h-full w-[280px] transition-opacity duration-fast",
+              "h-full w-full transition-opacity duration-fast xl:w-[320px]",
               galleryOpen ? "opacity-100" : "pointer-events-none opacity-0",
             )}
           >

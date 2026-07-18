@@ -60,6 +60,7 @@ export function BasicTab() {
         <Field htmlFor="prompt">
           <TagTextarea
             id="prompt"
+            aria-label="Prompt"
             placeholder="1girl, cherry blossoms, soft light, masterpiece…"
             value={s.prompt}
             onChange={(prompt) => patch({ prompt })}

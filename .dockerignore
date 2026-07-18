@@ -1,52 +1,44 @@
-# dependencies (bun install)
+# Dependency and build output are recreated inside the image.
 node_modules
-
-# output
+.next
 out
 dist
-.next
-*.tgz
+coverage
 
-# vcs
+# Never send repository metadata, local configuration, or secrets to the build daemon.
 .git
 .github
-
-# code coverage
-coverage
-*.lcov
-
-# logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
-
-# dotenv environment variable files
+.gitignore
+.dockerignore
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# caches
-.eslintcache
-.cache
-*.tsbuildinfo
-
-# IntelliJ based IDEs
-.idea
-
-# Finder (MacOS) folder config
-.DS_Store
-examples/input/*
-examples/output/*
-html/
-
-# npm files
+.env.*
 .npmrc
-npm-debug.log*
 
-# JSR files
+# Documentation and deployment files are not inputs to `next build`.
+docs
+**/*.md
+LICENSE
+Dockerfile*
+docker-compose*.yml
+
+# Local caches, reports, editor state, and generated archives.
+.cache
+.eslintcache
+*.tsbuildinfo
+*.log
+*.lcov
+*.tgz
+report.*.json
+.idea
+.serena
+.vscode
+.DS_Store
 .jsr
 .jsrrc
 
+# Project-local helper/output directories.
 .setup.sh
+.build.sh
+examples/input
+examples/output
+html

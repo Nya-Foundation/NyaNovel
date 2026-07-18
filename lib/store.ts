@@ -338,6 +338,7 @@ export const useStore = create<Store>()((set, get) => ({
       return;
     }
     const n = Math.max(1, settings.nSamples);
+    const compactLayout = typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches;
     // Deliberately does NOT clear selectedBatch/selectedImage: the success path below overwrites
     // them anyway, and keeping them means a failed run leaves the user's previous image intact
     // instead of dumping them on the first-run empty state.
@@ -346,6 +347,9 @@ export const useStore = create<Store>()((set, get) => ({
       lastError: null,
       abortRequested: false,
       runStartedAt: Date.now(),
+      // On compact layouts the composer is a drawer over the canvas. Committing the prompt should
+      // reveal streaming immediately; the persistent desktop composer stays exactly where it is.
+      ...(compactLayout ? { settingsCollapsed: true } : {}),
       streamingBatch: Array.from({ length: n }, (_, i) => ({
         sampleIndex: i,
         dataUrl: null,
@@ -385,7 +389,10 @@ export const useStore = create<Store>()((set, get) => ({
       );
 
       set((s) => ({ images: [...saved.slice().reverse(), ...s.images] }));
-      set({ selectedBatch: saved, selectedImage: saved[0], galleryOpen: true });
+      // The gallery is an overlay below 1280px. Opening it here would cover the result at the exact
+      // moment it resolves; on wide layouts it remains a useful persistent confirmation/history.
+      const compact = typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches;
+      set({ selectedBatch: saved, selectedImage: saved[0], galleryOpen: !compact });
       return saved;
     };
 
@@ -513,7 +520,7 @@ export const useStore = create<Store>()((set, get) => ({
         images: [...saved.slice().reverse(), ...s.images],
         selectedBatch: saved,
         selectedImage: saved[0],
-        galleryOpen: true,
+        galleryOpen: !(typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches),
         showDirector: false,
       }));
       toast.success("Applied director tool");

@@ -50,15 +50,23 @@ export function GalleryPanel() {
   const [confirmClear, setConfirmClear] = useState(false);
 
   const groups = useMemo(() => groupByBatch(images), [images]);
+  const openBatch = (batchId: number) => {
+    selectBatch(batchId);
+    // On compact layouts the gallery is a drawer over the stage; selecting a result should reveal
+    // it immediately. The persistent desktop panel stays open for rapid history browsing.
+    if (window.matchMedia("(max-width: 1279px)").matches) setUI({ galleryOpen: false });
+  };
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center justify-between border-b border-border-soft p-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-soft p-3.5">
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-bold text-fg">Gallery</span>
-          {status === "ready" && (
-            <span className="font-[family-name:var(--font-mono)] text-[11px] text-muted">{images.length}</span>
-          )}
+          <div>
+            <p className="text-[13px] font-bold text-fg">Gallery</p>
+            <p className="text-[11px] text-muted">
+              {status === "ready" ? `${images.length} local image${images.length === 1 ? "" : "s"}` : "Local history"}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           {status === "ready" && images.length > 0 && (
@@ -123,7 +131,7 @@ export function GalleryPanel() {
               <div key={g.batchId} className="group relative">
                 <button
                   type="button"
-                  onClick={() => selectBatch(g.batchId)}
+                  onClick={() => openBatch(g.batchId)}
                   title={g.settings.prompt || "(no prompt)"}
                   aria-label={`Batch of ${g.count}, seed ${g.seed}, ${relative(g.timestamp)}`}
                   className={cn(

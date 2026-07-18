@@ -1,8 +1,9 @@
 "use client";
 
-import { Download, Copy, Trash2, Wand2, RotateCcw, Hash, Sparkles, Maximize2, AlertTriangle, KeyRound } from "lucide-react";
+import { Download, Copy, Trash2, Wand2, RotateCcw, Hash, Maximize2, AlertTriangle, KeyRound } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/brand-logo";
 import { focusRing } from "@/components/ui/input";
 import { MODEL_OPTIONS } from "@/lib/nai/models";
 import { downloadDataUrl, copyImageToClipboard } from "@/lib/image-actions";
@@ -45,8 +46,8 @@ function EmptyState() {
         className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.18] blur-[100px]"
         style={{ background: "var(--accent)" }}
       />
-      <div className="relative flex size-14 items-center justify-center rounded-2xl border border-border-soft bg-surface-2 shadow-[var(--shadow-card)]">
-        <Sparkles className="size-6 text-accent" />
+      <div className="relative flex size-16 items-center justify-center rounded-2xl border border-border-soft bg-surface-2 shadow-[var(--shadow-card)]">
+        <BrandLogo variant="mark" className="size-10" />
       </div>
       <div className="relative">
         <h2 className="font-[family-name:var(--font-display)] text-[24px] font-bold tracking-[-0.02em] text-fg">
@@ -128,7 +129,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
   return (
     <div className="flex h-full flex-col">
       {/* stage with ambient backdrop */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={`bg-${img.id}`}
@@ -152,7 +153,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           onClick={focusThis}
           aria-label="Expand"
           className={cn(
-            "absolute right-8 top-8 flex size-9 items-center justify-center rounded-[10px] bg-black/45 text-white/90 backdrop-blur-md",
+            "absolute right-4 top-4 flex size-9 items-center justify-center rounded-[10px] bg-black/45 text-white/90 backdrop-blur-md sm:right-8 sm:top-8",
             "transition-[background-color,transform] duration-fast ease-out hover:bg-black/65 hover:scale-105",
             focusRing,
           )}
@@ -174,7 +175,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
             // Focus follows selection so the ring tracks the arrow keys.
             (document.getElementById(`batch-opt-${batch[next].id}`) as HTMLButtonElement | null)?.focus();
           }}
-          className="flex shrink-0 justify-center gap-2 px-4 pb-2"
+          className="flex shrink-0 justify-start gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:justify-center sm:px-4"
         >
           {batch.map((b, i) => {
             const active = b.id === img.id;
@@ -208,43 +209,57 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
       )}
 
       {/* toolbar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-t border-border-soft bg-surface/60 px-4 py-2.5 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Meta>
-            <Hash className="size-3 opacity-60" />
-            {img.seed}
-          </Meta>
-          <Meta>{img.settings.width}×{img.settings.height}</Meta>
-          <Meta>{img.settings.steps} steps</Meta>
-          <Meta>CFG {img.settings.scale}</Meta>
-          <span className="hidden pl-1 text-[12px] text-muted lg:inline">{modelLabel(img.settings.model)}</span>
+      <div className="shrink-0 border-t border-border-soft bg-surface/80 px-3 py-2.5 backdrop-blur-md sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-semibold text-fg" title={img.settings.prompt || "Untitled generation"}>
+              {img.settings.prompt || "Untitled generation"}
+            </p>
+            <p className="truncate text-[11px] text-muted">{modelLabel(img.settings.model)}</p>
+          </div>
+          <span className="hidden rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-fg-2 sm:inline">
+            Result {Math.max(0, batch.findIndex((b) => b.id === img.id)) + 1} / {batch.length}
+          </span>
         </div>
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Meta>
+              <Hash className="size-3 opacity-60" />
+              {img.seed}
+            </Meta>
+            <Meta>{img.settings.width}×{img.settings.height}</Meta>
+            <Meta>{img.settings.steps} steps</Meta>
+            <Meta>CFG {img.settings.scale}</Meta>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => setUI({ showDirector: true })}
             className={cn(
-              "mr-1 inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-surface-2 px-3 text-[13px] font-semibold text-fg transition-colors duration-instant hover:bg-surface-3",
+              "mr-0.5 inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-surface-2 px-2.5 text-[12.5px] font-semibold text-fg transition-colors duration-instant hover:bg-surface-3 sm:px-3 sm:text-[13px]",
               focusRing,
               "focus-visible:ring-offset-surface",
             )}
           >
             {/* 3.1: no text-accent here — accent is reserved for the primary action. */}
-            <Wand2 className="size-4" /> Director
+            <Wand2 className="size-4" /> <span className="hidden sm:inline">Director</span>
           </button>
           {/* Promoted from a bare 17px glyph in a row of five identical icons — reuse is the whole
               point of storing per-image param snapshots. */}
           <button
             type="button"
             onClick={() => restoreSettings(img.settings)}
+            aria-label="Reuse settings"
+            title="Reuse settings"
             className={cn(
-              "mr-1 inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-surface-2 px-3 text-[13px] font-semibold text-fg transition-colors duration-instant hover:bg-surface-3",
+              "mr-0.5 inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-surface-2 px-2.5 text-[12.5px] font-semibold text-fg transition-colors duration-instant hover:bg-surface-3 sm:px-3 sm:text-[13px]",
               focusRing,
               "focus-visible:ring-offset-surface",
             )}
           >
-            <RotateCcw className="size-4" /> Reuse settings
+            <RotateCcw className="size-4" /> <span className="hidden lg:inline">Reuse settings</span>
           </button>
           <ActionBtn label="Copy seed to settings" onClick={() => patchSettings({ seed: img.seed })}>
             <Hash />
@@ -258,6 +273,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           <ActionBtn label="Delete" danger onClick={() => img.id && deleteImage(img.id)}>
             <Trash2 />
           </ActionBtn>
+          </div>
         </div>
       </div>
     </div>

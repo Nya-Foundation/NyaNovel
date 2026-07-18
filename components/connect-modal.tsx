@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input, NumberInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function ConnectModal() {
   const show = useStore((s) => s.showConnect);
@@ -59,13 +60,7 @@ export function ConnectModal() {
       className="max-w-md"
     >
       <div className="mb-5 flex flex-col items-center text-center">
-        <span
-          className="mb-3 flex size-12 items-center justify-center rounded-[14px] text-[22px] font-black text-on-accent shadow-[var(--glow-accent)]"
-          style={{ background: "linear-gradient(135deg, var(--accent-bright), var(--accent))" }}
-          aria-hidden
-        >
-          N
-        </span>
+        <BrandLogo variant="mark" className="mb-3 size-14" />
         <h2 className="font-[family-name:var(--font-display)] text-[21px] font-bold tracking-[-0.02em] text-fg">
           Welcome to NyaNovel
         </h2>

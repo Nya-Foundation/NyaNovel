@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { isV4Model } from "@/lib/nai/models";
 import { Section, Field } from "./field";
 import { TagTextarea } from "./tag-textarea";
-import { Input, focusRing } from "@/components/ui/input";
+import { focusRing } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -57,13 +57,16 @@ export function CharactersTab() {
                 <TagTextarea
                   className="min-h-[56px]"
                   placeholder="Character prompt"
+                  aria-label={`Character ${i + 1} prompt`}
                   value={c.prompt}
                   onChange={(prompt) => update(i, { prompt })}
                 />
-                <Input
-                  placeholder="Undesired content"
+                <TagTextarea
+                  className="min-h-[44px]"
+                  placeholder="Character undesired content"
+                  aria-label={`Character ${i + 1} undesired content`}
                   value={c.uc}
-                  onChange={(e) => update(i, { uc: e.target.value })}
+                  onChange={(uc) => update(i, { uc })}
                 />
               </div>
               <div className="w-20">

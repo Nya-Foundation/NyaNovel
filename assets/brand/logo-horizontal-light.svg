@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title" viewBox="0 0 480 128">
+  <title id="title">NyaNovel horizontal logo for light backgrounds</title>
+  <defs>
+    <path id="mark" d="M12 12h40v22H34v18H12V12Zm64 0h40v40H94V34H76V12ZM12 76h22v18h18v22H12V76Zm82 0h22v40H76V94h18V76ZM64 53l11 11-11 11-11-11 11-11Z"/>
+  </defs>
+  <use href="#mark" fill="#F35F52" transform="translate(20 20) scale(.6875)"/>
+  <text x="128" y="92" fill="#171719" font-family="Liberation Sans, Arial, sans-serif" font-size="74" font-weight="700">NyaNovel</text>
+</svg>

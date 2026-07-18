@@ -71,9 +71,10 @@
   --fg: oklch(0.965 0.003 265);
   --fg-2: oklch(0.8 0.008 265);
   --muted: oklch(0.62 0.014 265);
-  --accent: oklch(0.62 0.15 255);
-  --accent-bright: oklch(0.74 0.12 255);
-  --on-accent: oklch(0.99 0.01 255);
+  /* Latent Frame: Signal Coral is the product's default load-bearing colour. */
+  --accent: #f35f52;
+  --accent-bright: #ff7b70;
+  --on-accent: #171719;
   --danger: oklch(0.7 0.16 25);
   --danger-bg: oklch(0.55 0.19 25);
   --ok: oklch(0.74 0.13 160);
@@ -104,9 +105,9 @@
   --fg: oklch(0.215 0.013 265);
   --fg-2: oklch(0.4 0.013 265);
   --muted: oklch(0.52 0.014 265);
-  --accent: oklch(0.52 0.16 255);
-  --accent-bright: oklch(0.5 0.16 255);
-  --on-accent: #fff;
+  --accent: #f35f52;
+  --accent-bright: #df493e;
+  --on-accent: #171719;
   /* Status colors: the dark defaults (L 0.7-0.8) sit at ~2:1 on the near-white light bg, so they
      must be re-darkened here to clear WCAG AA for text/icons. --danger-bg stays saturated (it backs
      white text on badges). */
@@ -130,12 +131,14 @@
 }
 
 /* ---- accent variants (dark) ---- */
+[data-accent="blue"] { --accent: oklch(0.62 0.15 255); --accent-bright: oklch(0.74 0.12 255); }
 [data-accent="violet"] { --accent: oklch(0.6 0.17 292); --accent-bright: oklch(0.74 0.14 292); }
 [data-accent="emerald"] { --accent: oklch(0.6 0.12 165); --accent-bright: oklch(0.74 0.11 165); }
 [data-accent="magenta"] { --accent: oklch(0.62 0.18 350); --accent-bright: oklch(0.76 0.15 350); }
 [data-accent="coral"] { --accent: oklch(0.64 0.17 35); --accent-bright: oklch(0.76 0.14 42); }
 
 /* ---- accent variants (light) ---- */
+[data-mode="light"][data-accent="blue"] { --accent: oklch(0.52 0.16 255); --accent-bright: oklch(0.5 0.16 255); }
 [data-mode="light"][data-accent="violet"] { --accent: oklch(0.5 0.19 292); --accent-bright: oklch(0.48 0.19 292); }
 [data-mode="light"][data-accent="emerald"] { --accent: oklch(0.5 0.13 165); --accent-bright: oklch(0.46 0.13 165); }
 [data-mode="light"][data-accent="magenta"] { --accent: oklch(0.52 0.19 350); --accent-bright: oklch(0.5 0.19 350); }
@@ -152,6 +155,12 @@
   body { font-family: var(--font-sans); }
   ::selection { background: var(--accent); color: var(--on-accent); }
 }
+
+/* Both supplied wordmarks are rendered so theme changes swap instantly without fetching or
+   remounting an image. The no-flash script sets data-mode before first paint. */
+.brand-logo-light { display: none; }
+[data-mode="light"] .brand-logo-dark { display: none; }
+[data-mode="light"] .brand-logo-light { display: block; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

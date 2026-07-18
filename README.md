@@ -1,79 +1,304 @@
-# NyaNovel
+<p align="center">
+  <img src="assets/brand/github-social-banner.png" alt="NyaNovel — AI image generation, refined" width="100%" />
+</p>
 
-A fast, refined browser client for NovelAI image generation — a modern take on the NovelAI image UI,
-built on Next.js and the [`nekoai-js`](https://github.com/Nya-Foundation/NekoAI-JS) SDK. Part of the
-latent.moe family.
+<p align="center">
+  A fast, local-first studio for NovelAI image generation.<br />
+  More control, clearer feedback, and less friction between an idea and its next iteration.
+</p>
 
-Everything runs client-side: your NovelAI token stays in your browser and calls NovelAI directly, and
-your generations are stored locally in IndexedDB.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#docker">Docker</a> ·
+  <a href="#privacy-and-data">Privacy</a> ·
+  <a href="#development">Development</a>
+</p>
 
-## ✨ Features
+## About NyaNovel
 
-- **🖼️ Image generation** — full parameter control: model (V4.5 / V4 / V3 / Furry), resolution presets
-  + custom size, steps, sampler, guidance (CFG) + rescale, noise schedule, seed lock, batch size,
-  quality/UC presets, dynamic thresholding, auto-SMEA.
-- **⚡ Live streaming** — watch each sample denoise in place with a per-sample progress ring.
-- **👥 Character prompts** — V4/V4.5 multi-character with per-character prompt, undesired content, and a
-  draggable position grid.
-- **🎨 Vibe transfer & director reference** — multiple reference images with strength / info-extracted.
-- **🪄 Director tools** — line art, sketch, background removal, declutter, change emotion, colorize,
-  plus upscale & enhance — applied to any result.
-- **🏷️ Tag autocomplete** — inline NovelAI tag suggestions with post counts in the prompt fields.
-- **🗂️ Local gallery** — batch grouping, lightbox, copy, download, copy-seed, restore-all-settings.
-- **🎨 Theming** — dark/light + swappable accent colors, inherited from the latent.moe design system.
+NyaNovel is an unofficial browser client for NovelAI image generation. It keeps the depth of
+NovelAI's generation controls while presenting them as a focused, responsive creative workspace:
+compose on the left, review in the center, and move through local history on the right.
 
-## 🚀 Getting started
+Generation requests are made from the browser through
+[`nekoai-js`](https://github.com/Nya-Foundation/NekoAI-JS). NyaNovel does not require its own account
+server or image database. Your connection settings stay in browser storage, and generated images are
+kept locally in IndexedDB.
 
-Requires [Bun](https://bun.sh) and a NovelAI account with API access.
+NyaNovel is part of the **latent.moe** family and is maintained by the
+[Nya Foundation](https://github.com/Nya-Foundation).
+
+## Features
+
+### Generation studio
+
+- NovelAI Diffusion V4.5 Full and Curated, V4 Full and Curated, Anime V3, and Furry V3.
+- Portrait, landscape, square, and wallpaper presets with custom width and height controls.
+- Steps, sampler, prompt guidance, CFG rescale, noise schedule, batch size, and seed controls.
+- Quality tags, undesired-content presets, dynamic thresholding, and automatic SMEA.
+- Random or pinned seeds with per-result seed restoration.
+- Complete generation settings saved with every image.
+
+### Live generation feedback
+
+- Streamed intermediate frames that resolve in place while NovelAI generates.
+- Per-sample step progress, aggregate batch progress, and elapsed time.
+- Multi-image streaming grids that preserve the requested aspect ratio.
+- Stop control for in-flight batches; completed samples are preserved when possible.
+- Actionable connection, quota, network, and generation error states.
+
+### Characters and references
+
+- V4 and V4.5 multi-character prompts.
+- Per-character prompt, undesired content, enabled state, and visual position control.
+- Multiple vibe-transfer references with individual strength and information-extracted values.
+- Multiple Director references with independent controls.
+- Image previews and removable reference cards directly inside the composer.
+
+### Director tools
+
+Apply NovelAI Director operations to any selected result:
+
+- Line art
+- Sketch
+- Background removal
+- Declutter
+- Colorize
+- Change emotion
+- 4× upscale
+- Enhance
+
+Director outputs return to the same local gallery and retain the source image's generation metadata.
+
+### Prompting and iteration
+
+- Inline NovelAI tag suggestions with category styling and post counts.
+- Suggestions inside main, undesired-content, and character prompt fields.
+- One-click seed reuse or complete settings restoration from any result.
+- Undo support when settings are replaced or an image is deleted.
+- Example prompts that append safely to work already in progress.
+
+### Local gallery and review
+
+- IndexedDB-backed image history grouped by generation batch.
+- Batch filmstrip with mouse and keyboard navigation.
+- Focused lightbox with zoom and previous/next navigation.
+- Download, clipboard copy, copy seed, reuse settings, and delete actions.
+- Local-storage error recovery and explicit clear-all confirmation.
+
+### Interface
+
+- Persistent three-panel workstation on wide displays.
+- Animated composer and gallery drawers on compact displays.
+- Dark and light themes with Signal Coral branding and optional accent palettes.
+- Reduced-motion support, visible focus states, focus-trapped dialogs, and accessible status updates.
+- Responsive result metadata and controls designed for both pointer and touch input.
+
+## Quick start
+
+### Requirements
+
+- A recent [Bun](https://bun.sh/) release.
+- A modern browser with IndexedDB support.
+- A NovelAI account with image-generation access and a persistent API token.
+
+### Install and run
 
 ```bash
-bun install
-bun run dev          # http://localhost:3000
+git clone https://github.com/Nya-Foundation/NyaNovel.git
+cd NyaNovel
+bun install --frozen-lockfile
+bun run dev
 ```
 
-On first launch, paste your NovelAI API token (Host defaults to `https://image.novelai.net`).
+Open [http://localhost:3000](http://localhost:3000).
 
-### Production
+On first launch, enter your NovelAI persistent API token. You can create one under NovelAI's
+**Account → Get Persistent API Token** settings. The default API host is
+`https://image.novelai.net`.
+
+> Image generation consumes your NovelAI account's available Anlas according to NovelAI's current
+> pricing and account rules.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> | Generate from anywhere in the studio |
+| <kbd>[</kbd> | Toggle the composer |
+| <kbd>]</kbd> | Toggle the gallery |
+| <kbd>Esc</kbd> | Close the active dialog, lightbox, or compact drawer |
+| <kbd>←</kbd> / <kbd>→</kbd> | Move through batch results or lightbox images |
+| <kbd>+</kbd> / <kbd>−</kbd> | Zoom in or out in the lightbox |
+| <kbd>0</kbd> | Reset lightbox zoom |
+
+Tag suggestions support arrow-key navigation and can be accepted with <kbd>Enter</kbd> or
+<kbd>Tab</kbd>.
+
+## Production build
+
+Create and run the Next.js production build:
 
 ```bash
 bun run build
 bun run start
 ```
 
-### Docker
+The server listens on port `3000` by default.
+
+`NEXT_PUBLIC_SITE_URL` is a build-time value used to create absolute Open Graph and Twitter image
+URLs. Set it to the public origin when building a deployed instance:
 
 ```bash
-docker compose up --build      # http://localhost:8080
+NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com bun run build
+bun run start
 ```
 
-## 🧰 Scripts
+## Docker
+
+The included multi-stage image uses Bun only during installation and compilation. The runtime image
+contains a minimal Alpine base, the official Node 22 binary, and Next.js standalone output. It runs
+as an unprivileged user and includes a dependency-free health check.
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:8080](http://localhost:8080).
+
+For a public deployment, provide the externally reachable origin before building:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com docker compose up -d --build
+```
+
+### Docker CLI
+
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://nyanovel.example.com \
+  -t nyanovel .
+
+docker run --rm -p 8080:3000 nyanovel
+```
+
+## Privacy and data
+
+NyaNovel is local-first, but it is important to understand where each kind of data goes.
+
+| Data | Storage or destination |
+| --- | --- |
+| API token and connection preferences | Browser local storage for the current origin |
+| Prompts, settings, and reference images used for generation | Sent to the configured image API host |
+| Generated images and per-image settings | Browser IndexedDB for the current origin |
+| Theme and panel preferences | Browser local storage |
+
+With the default configuration, generation traffic goes directly from your browser to NovelAI. If
+you configure a different Host URL, your token or access key, prompts, references, and generation
+requests are sent to that host instead.
+
+NyaNovel does not upload your local gallery to an application server. Clearing site data, using a
+different browser profile, or changing the deployment origin can make locally stored settings and
+images unavailable. Download important results you want to retain independently.
+
+Treat any deployed NyaNovel origin as trusted: browser local storage is accessible to JavaScript
+served by that same origin.
+
+## Architecture
+
+NyaNovel is a Next.js App Router application. The server delivers the application shell; sensitive
+generation and storage operations happen in the browser.
+
+| Path | Responsibility |
+| --- | --- |
+| `app/` | Application entry point, metadata, fonts, and global design tokens |
+| `components/sidebar/` | Generation settings, prompting, characters, and reference controls |
+| `components/canvas/` | Streaming previews, result stage, lightbox, and Director tools |
+| `components/gallery/` | Local batch history and gallery actions |
+| `components/ui/` | Shared accessible interface primitives |
+| `lib/nai/` | Connection persistence, SDK adapter, settings mapping, and model options |
+| `lib/db/` | IndexedDB gallery persistence |
+| `lib/store.ts` | Zustand application state and generation lifecycle |
+| `assets/brand/` | Latent Frame logos, mark, app icon, and social artwork |
+
+### Technology
+
+- [Next.js](https://nextjs.org/) 16 and React 19
+- [Tailwind CSS](https://tailwindcss.com/) v4
+- [Zustand](https://zustand.docs.pmnd.rs/) for client state
+- [`nekoai-js`](https://github.com/Nya-Foundation/NekoAI-JS) for NovelAI operations
+- IndexedDB for local image persistence
+- Bun for dependency management and builds
+- TypeScript throughout
+
+## Development
+
+### Commands
 
 | Command | Description |
-|---|---|
-| `bun run dev` | Start the dev server |
-| `bun run build` | Production build (standalone output) |
-| `bun run start` | Serve the production build |
-| `bun run lint` | ESLint |
-| `bun run typecheck` | TypeScript check |
+| --- | --- |
+| `bun run dev` | Start the development server |
+| `bun run build` | Create the optimized standalone production build |
+| `bun run start` | Run the production Next.js server |
+| `bun run lint` | Run ESLint |
+| `bun run typecheck` | Run TypeScript without emitting files |
 
-## 🔒 Privacy
+Before opening a pull request, run:
 
-NyaNovel runs entirely in your browser. Your API token is stored only in local browser storage and is
-sent only to the NovelAI API — never to us.
+```bash
+bun run typecheck
+bun run lint
+bun run build
+```
 
-## 🛠️ Stack
+### Contributing
 
-Next.js 16 · React 19 · Tailwind CSS v4 · TypeScript · Zustand · `nekoai-js` · Bun.
+Issues and focused pull requests are welcome. Keep changes scoped, preserve local-first behavior, and
+include proportional verification for generation lifecycle, persistence, accessibility, or responsive
+layout changes.
 
-## 📝 Legal
+Do not commit API tokens, generated `.env` files, or private reference images.
 
-Provided strictly for research purposes. Users are solely responsible for complying with NovelAI's
-Terms of Service and all applicable laws. The creators disclaim all liability for misuse.
+## Troubleshooting
 
-## 📄 License
+### The token is rejected
 
-`nekoai-js` is AGPL-3.0. See [LICENSE](LICENSE).
+Create a fresh persistent token in NovelAI account settings and copy the complete value. If you use a
+custom host, verify both the host URL and the credential expected by that host.
+
+### My gallery is empty
+
+The gallery belongs to the exact browser profile and site origin where the images were generated.
+Check that site storage was not cleared and that you are using the same protocol, hostname, and port.
+
+### Shared links use `localhost` in their preview metadata
+
+Rebuild with `NEXT_PUBLIC_SITE_URL` set to the deployment's public origin. This value is compiled at
+build time and cannot be corrected by changing only the runtime environment.
+
+### Generation cannot reach a custom host
+
+Because requests originate in the browser, the custom host must accept requests from the NyaNovel
+deployment origin and expose the API behavior expected by `nekoai-js`.
+
+## Legal
+
+NyaNovel is an independent, unofficial project and is not affiliated with or endorsed by NovelAI or
+Anlatan. You are responsible for complying with NovelAI's terms, the rules of any configured API
+host, and all applicable laws. The software is provided without warranty.
+
+## License
+
+NyaNovel is released under the [MIT License](LICENSE). Copyright © 2025 Nya Foundation.
+
+Third-party packages remain subject to their own licenses. In particular, `nekoai-js` is distributed
+under the AGPL-3.0 license; see its upstream repository for details.
 
 ---
 
-<p align="center">Made with ♥ by the Nya Foundation</p>
+<p align="center">
+  Made with care by the Nya Foundation.
+</p>
