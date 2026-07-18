@@ -1,88 +1,79 @@
 # NyaNovel
 
-A front-end only client for NovelAI's image generation service, built with HTML, TailwindCSS, and Alpine.js.
+A fast, refined browser client for NovelAI image generation — a modern take on the NovelAI image UI,
+built on Next.js and the [`nekoai-js`](https://github.com/Nya-Foundation/NekoAI-JS) SDK. Part of the
+latent.moe family.
 
-## 🌟 Features
+Everything runs client-side: your NovelAI token stays in your browser and calls NovelAI directly, and
+your generations are stored locally in IndexedDB.
 
-- **💫 Clean UI**: Modern, responsive interface with dark/light mode support
-- **🖼️ Image Generation**: Create anime-style images using NovelAI's API
-- **🎨 Director Tools**: Edit generated images with line art, sketch, background removal and more
-- **🔄 Batch Generation**: Generate multiple images at once
+## ✨ Features
 
-## 🚀 Getting Started
+- **🖼️ Image generation** — full parameter control: model (V4.5 / V4 / V3 / Furry), resolution presets
+  + custom size, steps, sampler, guidance (CFG) + rescale, noise schedule, seed lock, batch size,
+  quality/UC presets, dynamic thresholding, auto-SMEA.
+- **⚡ Live streaming** — watch each sample denoise in place with a per-sample progress ring.
+- **👥 Character prompts** — V4/V4.5 multi-character with per-character prompt, undesired content, and a
+  draggable position grid.
+- **🎨 Vibe transfer & director reference** — multiple reference images with strength / info-extracted.
+- **🪄 Director tools** — line art, sketch, background removal, declutter, change emotion, colorize,
+  plus upscale & enhance — applied to any result.
+- **🏷️ Tag autocomplete** — inline NovelAI tag suggestions with post counts in the prompt fields.
+- **🗂️ Local gallery** — batch grouping, lightbox, copy, download, copy-seed, restore-all-settings.
+- **🎨 Theming** — dark/light + swappable accent colors, inherited from the latent.moe design system.
 
-### Prerequisites
+## 🚀 Getting started
 
-- NovelAI account with API access
-- Web browser (Chrome, Firefox, Safari, Edge recommended)
-
-### Installation Options
-
-#### Option 1: Docker (Recommended)
-
-```bash
-docker compose up
-```
-or
-
-```bash
-docker run -d -p 8080:80 k3scat/nya-novel
-```
-Then open your browser and navigate to `http://localhost:8080`
-
-#### Option 2: Direct Usage
+Requires [Bun](https://bun.sh) and a NovelAI account with API access.
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
+bun install
+bun run dev          # http://localhost:3000
 ```
 
-After building, you can serve the `dist` directory with any static file server.
+On first launch, paste your NovelAI API token (Host defaults to `https://image.novelai.net`).
 
-## ⚙️ Configuration
+### Production
 
-1. Click the settings icon in the top right corner
-2. Enter your NovelAI API endpoint (default: https://image.novelai.net)
-3. Enter your NovelAI API token
-4. Click "Connect to NovelAI"
+```bash
+bun run build
+bun run start
+```
+
+### Docker
+
+```bash
+docker compose up --build      # http://localhost:8080
+```
+
+## 🧰 Scripts
+
+| Command | Description |
+|---|---|
+| `bun run dev` | Start the dev server |
+| `bun run build` | Production build (standalone output) |
+| `bun run start` | Serve the production build |
+| `bun run lint` | ESLint |
+| `bun run typecheck` | TypeScript check |
 
 ## 🔒 Privacy
 
-NyaNovel runs entirely in your browser. Your API key is stored only in your local browser storage and is never sent to any server other than the NovelAI API.
+NyaNovel runs entirely in your browser. Your API token is stored only in local browser storage and is
+sent only to the NovelAI API — never to us.
 
-## 🧰 Development
+## 🛠️ Stack
 
-```bash
-# Install dependencies
-npm install
+Next.js 16 · React 19 · Tailwind CSS v4 · TypeScript · Zustand · `nekoai-js` · Bun.
 
-# Then use Live Server (vscode plugin) on the dist/ folder
-```
+## 📝 Legal
 
-## 📝 Legal Disclaimer
-
-NyaNovel is provided strictly for research purposes only. Any commercial use and abuse are not permitted and may violate NovelAI's Terms of Service. Users are solely responsible for ensuring their usage complies with all applicable laws and NovelAI's terms. The creators of NyaNovel disclaim all liability for any misuse or violations committed by users.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+Provided strictly for research purposes. Users are solely responsible for complying with NovelAI's
+Terms of Service and all applicable laws. The creators disclaim all liability for misuse.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [NovelAI](https://novelai.net) for their amazing image generation API
-- [TailwindCSS](https://tailwindcss.com) for the styling framework
-- [Alpine.js](https://alpinejs.dev) for the JavaScript framework
-- [Nya Foundation](https://github.com/Nya-Foundation) for the support
+`nekoai-js` is AGPL-3.0. See [LICENSE](LICENSE).
 
 ---
 
-<p align="center">
-  Made with ♥ by the Nya Foundation
-</p>
+<p align="center">Made with ♥ by the Nya Foundation</p>

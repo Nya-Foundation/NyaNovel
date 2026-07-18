@@ -1,37 +1,35 @@
-# Build stage
-FROM node:lts-alpine3.20 AS builder
+# syntax=docker/dockerfile:1
 
+# ---- deps ----
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-# Copy only package files and install dependencies
-COPY package.json ./
-RUN npm install
-
-# Copy source files
+# ---- build ----
+FROM oven/bun:1-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN bun run build
 
-# Build the application
-RUN npm run build
+# ---- runtime ----
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
 
-# Final stage
-FROM nginx:stable-alpine-slim
-
-
-# Add image metadata
-LABEL org.opencontainers.image.description="A front-end only client for NovelAI's image generation, built with TailwindCSS, and Alpine.js." \
+LABEL org.opencontainers.image.description="A refined browser client for NovelAI image generation, built with Next.js and nekoai-js." \
       org.opencontainers.image.source="https://github.com/Nya-Foundation/NyaNovel" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="AGPL-3.0-only"
 
-COPY nginx.conf /etc/nginx/nginx.conf
+RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
 
-# Copy built static files and set ownership in one step
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Next.js standalone output: minimal server + only the traced dependencies.
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy and set permissions for custom entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-EXPOSE 80
-
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["nginx", "-g", "daemon off;"]
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

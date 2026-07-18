@@ -4,7 +4,12 @@ node_modules
 # output
 out
 dist
+.next
 *.tgz
+
+# vcs
+.git
+.github
 
 # code coverage
 coverage
