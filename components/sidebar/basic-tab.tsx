@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dices, Lock, LockOpen } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/nai/models";
 import { Field, Section } from "./field";
 import { TagTextarea } from "./tag-textarea";
+import { AspectLock, DimensionInput } from "./dimension-input";
 import { Select } from "@/components/ui/select";
 import { NumberInput } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -22,10 +23,17 @@ import { SwitchRow } from "@/components/ui/switch";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RecipeImporter } from "./recipe-importer";
 
 const MAX_SEED = 4294967295;
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+
+/**
+ * With aspect lock on, the edited side's proportional change is applied to the other side and
+ * snapped back onto the 64px grid NovelAI requires. Clamped to the same 64…2048 bounds as the
+ * fields themselves, so dragging one side to an extreme can't push the other out of range.
+ */
+const scaleTo = (next: number, prev: number, other: number) =>
+  Math.min(2048, Math.max(64, Math.round((other * (next / prev)) / 64) * 64));
 
 export function BasicTab() {
   const s = useStore((st) => st.settings);
@@ -33,6 +41,7 @@ export function BasicTab() {
   const lastSeed = useStore((st) => st.selectedImage?.seed);
   const [tier, aspect] = tierAspectForSize(s.width, s.height);
   const isRandom = s.seed < 0;
+  const [linked, setLinked] = useState(false);
 
   // Where "Custom" returns to. Tracks the last size that matched a real preset.
   const lastPreset = useRef({ w: s.width, h: s.height });
@@ -78,15 +87,6 @@ export function BasicTab() {
         </Field>
       </Section>
 
-      <Section
-        title="Import from PNG"
-        description="Restore a NovelAI image recipe"
-        collapsible
-        defaultOpen={false}
-      >
-        <RecipeImporter />
-      </Section>
-
       <Section title="Resolution">
         <div className="mb-3 flex flex-col gap-2">
           {/* Only the aspects this tier actually has — Wallpaper has no Square, and offering it
@@ -118,17 +118,45 @@ export function BasicTab() {
           />
         </div>
         <div className="flex items-end gap-2">
-          <Field className="mb-0 flex-1" label="Width" htmlFor="w">
-            <NumberInput id="w" min={64} max={2048} step={64} value={s.width} onChange={(e) => patch({ width: Number(e.target.value) })} />
-          </Field>
-          <span className="pb-3 text-muted">×</span>
-          <Field className="mb-0 flex-1" label="Height" htmlFor="h">
-            <NumberInput id="h" min={64} max={2048} step={64} value={s.height} onChange={(e) => patch({ height: Number(e.target.value) })} />
-          </Field>
+          <DimensionInput
+            id="w"
+            label="Width"
+            min={64}
+            max={2048}
+            step={64}
+            value={s.width}
+            onCommit={(width) => patch(linked ? { width, height: scaleTo(width, s.width, s.height) } : { width })}
+          />
+          <AspectLock locked={linked} onToggle={() => setLinked((v) => !v)} />
+          <DimensionInput
+            id="h"
+            label="Height"
+            min={64}
+            max={2048}
+            step={64}
+            value={s.height}
+            onCommit={(height) => patch(linked ? { height, width: scaleTo(height, s.height, s.width) } : { height })}
+          />
         </div>
-        <p className="mt-2 text-right font-[family-name:var(--font-mono)] text-[11px] tabular-nums text-muted">
-          {sizeSummary(s.width, s.height)}
-        </p>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {/* A live proportion swatch: the numbers say 832×1216, this says "tall". Reading a shape
+              is faster than dividing two four-digit numbers. */}
+          <span
+            aria-hidden
+            className="flex h-6 w-10 shrink-0 items-center justify-center rounded-[5px] border border-border-soft bg-surface-2"
+          >
+            <span
+              className="rounded-[2px] bg-accent/70 transition-[width,height] duration-base ease-out"
+              style={{
+                width: `${Math.max(10, (s.width >= s.height ? 1 : s.width / s.height) * 20)}px`,
+                height: `${Math.max(6, (s.height >= s.width ? 1 : s.height / s.width) * 16)}px`,
+              }}
+            />
+          </span>
+          <p className="truncate text-right font-[family-name:var(--font-mono)] text-[11px] tabular-nums text-muted">
+            {sizeSummary(s.width, s.height)}
+          </p>
+        </div>
       </Section>
 
       <Section title="Sampling">

@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Search, Sparkles, Square, Wand2, Images, PanelLeftOpen, KeyRound, Moon, Sun,
-  Palette, Hash, RotateCcw, Dices, Trash2, SlidersHorizontal, Users, CornerDownLeft,
+  Palette, Hash, RotateCcw, Dices, Trash2, SlidersHorizontal, Users, CornerDownLeft, FileImage,
 } from "lucide-react";
+import { pickRecipeFile } from "@/lib/recipe-import";
 import { useStore } from "@/lib/store";
 import { MODEL_OPTIONS, modelLabel } from "@/lib/nai/models";
 import { applyAccent, applyMode, currentMode, ACCENTS } from "@/lib/theme";
@@ -127,6 +128,15 @@ export function CommandPalette() {
         icon: <Wand2 />,
         keywords: "upscale lineart sketch colorize declutter enhance emotion background",
         run: go(() => s.setUI({ showDirector: true })),
+      },
+      {
+        id: "import-recipe",
+        label: "Import recipe from PNG…",
+        hint: "Or drop the file anywhere",
+        group: "Actions",
+        icon: <FileImage />,
+        keywords: "load restore novelai metadata drop open file",
+        run: go(pickRecipeFile),
       },
       {
         id: "reuse",

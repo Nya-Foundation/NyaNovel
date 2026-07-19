@@ -11,6 +11,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { focusRing } from "@/components/ui/input";
 import { modelLabel } from "@/lib/nai/models";
 import { downloadDataUrl, copyImageToClipboard } from "@/lib/image-actions";
+import { pickRecipeFile } from "@/lib/recipe-import";
 import { StreamingGrid } from "./streaming-grid";
 import { cn } from "@/lib/utils";
 import type { GalleryImage } from "@/lib/db/gallery";
@@ -143,6 +144,24 @@ function EmptyState() {
           </motion.button>
         ))}
       </motion.div>
+
+      {/* The import path used to live in a collapsed sidebar section. Now that it's a drop gesture,
+          this line is what tells anyone it exists — and the button keeps it reachable without a
+          pointer, which a drop target alone can never be. */}
+      <motion.p variants={listItem} className="relative text-[12px] text-muted">
+        Have a NovelAI PNG?{" "}
+        <button
+          type="button"
+          onClick={pickRecipeFile}
+          className={cn(
+            "rounded-[4px] font-semibold text-fg-2 underline decoration-dotted underline-offset-2 transition-colors duration-instant hover:text-accent",
+            focusRing,
+          )}
+        >
+          Import its recipe
+        </button>{" "}
+        or drop it anywhere.
+      </motion.p>
 
       <motion.p variants={listItem} className="relative text-[11.5px] text-muted">
         Press{" "}
