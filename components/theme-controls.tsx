@@ -5,16 +5,14 @@ import { Check, Moon, Palette, Sun } from "lucide-react";
 import { IconButton } from "./ui/icon-button";
 import { focusRing } from "./ui/input";
 import { cn } from "@/lib/utils";
-
-type Mode = "dark" | "light";
-
-const ACCENTS = [
-  { key: "default", label: "Signal Coral", swatch: "#f35f52" },
-  { key: "blue", label: "Signal Blue", swatch: "oklch(0.62 0.15 255)" },
-  { key: "violet", label: "Violet", swatch: "oklch(0.6 0.17 292)" },
-  { key: "emerald", label: "Emerald", swatch: "oklch(0.6 0.12 165)" },
-  { key: "magenta", label: "Magenta", swatch: "oklch(0.62 0.18 350)" },
-] as const;
+import {
+  ACCENTS,
+  applyAccent as writeAccent,
+  applyMode as writeMode,
+  currentAccent,
+  currentMode,
+  type Mode,
+} from "@/lib/theme";
 
 export function ThemeControls() {
   const [mode, setMode] = useState<Mode>("dark");
@@ -38,6 +36,17 @@ export function ThemeControls() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
+  // The command palette can change mode/accent too. Without this the popover keeps rendering the
+  // old pressed state until it remounts, so the two surfaces visibly disagree.
+  useEffect(() => {
+    const sync = () => {
+      setMode(currentMode());
+      setAccent(currentAccent());
+    };
+    window.addEventListener("nya-theme-change", sync);
+    return () => window.removeEventListener("nya-theme-change", sync);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
@@ -56,22 +65,15 @@ export function ThemeControls() {
     };
   }, [open]);
 
+  // The shared helpers own the DOM/localStorage/event write; these wrappers only mirror the result
+  // into local state so the popover's pressed states stay in sync.
   const applyMode = (next: Mode) => {
-    document.documentElement.setAttribute("data-mode", next);
-    localStorage.setItem("nya-mode", next);
+    writeMode(next);
     setMode(next);
-    window.dispatchEvent(new Event("nya-theme-change"));
   };
 
   const applyAccent = (next: string) => {
-    const d = document.documentElement;
-    if (next === "default") {
-      d.removeAttribute("data-accent");
-      localStorage.removeItem("nya-accent");
-    } else {
-      d.setAttribute("data-accent", next);
-      localStorage.setItem("nya-accent", next);
-    }
+    writeAccent(next);
     setAccent(next);
   };
 

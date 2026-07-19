@@ -10,6 +10,7 @@ import { Canvas } from "./canvas/canvas";
 import { Lightbox } from "./canvas/lightbox";
 import { DirectorModal } from "./canvas/director-modal";
 import { GalleryPanel } from "./gallery/gallery-panel";
+import { CommandPalette } from "./command-palette";
 import { IconButton } from "./ui/icon-button";
 import { ProgressRing } from "./ui/progress-ring";
 import { cn } from "@/lib/utils";
@@ -193,6 +194,7 @@ export function Studio() {
       <ConnectModal />
       <DirectorModal />
       <Lightbox />
+      <CommandPalette />
     </div>
   );
 }

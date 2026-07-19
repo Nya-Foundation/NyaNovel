@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Download, Copy, Trash2, Wand2, RotateCcw, Hash, Maximize2, AlertTriangle, KeyRound } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { fade, listContainer, listItem, spring, usePrefersReducedMotion } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { BrandLogo } from "@/components/brand-logo";
@@ -18,10 +21,51 @@ const EXAMPLES = [
   { title: "Cozy watercolor", prompt: "cozy cafe, warm afternoon, watercolor, wlop" },
 ];
 
+/** Rotating inspiration line — the stage is otherwise completely static before the first run. */
+const MUSES = [
+  "a fox spirit in a rain-soaked shrine",
+  "brutalist library, dust in the light shafts",
+  "a mecha resting in a wheat field",
+  "portrait lit only by an aquarium",
+  "storm rolling over a paper town",
+];
+
+function AmbientField() {
+  const reduced = usePrefersReducedMotion();
+
+  // Two counter-drifting accent blooms. Static gradients read as a flat backdrop; slow parallax
+  // makes the stage feel like a live surface waiting for output rather than a dead panel. Frozen
+  // (not removed) under reduced motion — the depth survives, the drift doesn't.
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <motion.div
+        className="absolute left-1/2 top-1/2 h-[520px] w-[520px] rounded-full blur-[110px]"
+        style={{ background: "var(--accent)", opacity: 0.17 }}
+        initial={{ x: "-50%", y: "-50%" }}
+        animate={reduced ? { x: "-50%", y: "-50%" } : { x: ["-58%", "-42%", "-58%"], y: ["-56%", "-44%", "-56%"] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute left-1/2 top-1/2 h-[380px] w-[380px] rounded-full blur-[100px]"
+        style={{ background: "var(--cat-lora)", opacity: 0.1 }}
+        initial={{ x: "-50%", y: "-50%" }}
+        animate={reduced ? { x: "-50%", y: "-50%" } : { x: ["-38%", "-60%", "-38%"], y: ["-40%", "-58%", "-40%"] }}
+        transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
 function EmptyState() {
   const patch = useStore((s) => s.patchSettings);
   const prompt = useStore((s) => s.settings.prompt);
   const setUI = useStore((s) => s.setUI);
+  const [muse, setMuse] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setMuse((i) => (i + 1) % MUSES.length), 4200);
+    return () => clearInterval(t);
+  }, []);
 
   // Appends rather than replaces: this screen also renders for a returning user who has already
   // typed a prompt, and the chip used to destroy it with no undo. Expanding the sidebar and
@@ -38,33 +82,57 @@ function EmptyState() {
   };
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-5 overflow-hidden p-8 text-center">
-      {/* soft ambient accent glow so the stage is never a dead black void */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.18] blur-[100px]"
-        style={{ background: "var(--accent)" }}
-      />
-      <div className="relative flex size-16 items-center justify-center rounded-2xl border border-border-soft bg-surface-2 shadow-[var(--shadow-card)]">
-        <BrandLogo variant="mark" className="size-10" />
-      </div>
-      <div className="relative">
+    <motion.div
+      className="relative flex h-full flex-col items-center justify-center gap-5 overflow-hidden p-8 text-center"
+      variants={listContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <AmbientField />
+
+      <motion.div variants={listItem} className="relative">
+        <div className="flex size-16 items-center justify-center rounded-2xl border border-border-soft bg-surface-2 shadow-[var(--shadow-card)]">
+          <BrandLogo variant="mark" className="size-10" />
+        </div>
+      </motion.div>
+
+      <motion.div variants={listItem} className="relative">
         <h2 className="font-[family-name:var(--font-display)] text-[24px] font-bold tracking-[-0.02em] text-fg">
           What should we imagine?
         </h2>
         <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] text-muted">
           Describe your image and hit Generate. It streams in here and lands in your gallery.
         </p>
-      </div>
-      <div className="relative grid w-full max-w-2xl gap-2 sm:grid-cols-3">
+        {/* Fixed height: the line swaps under an absolutely-positioned crossfade, so a longer muse
+            must not reflow the buttons below it mid-rotation. */}
+        <div className="relative mx-auto mt-3 h-5 w-full max-w-sm">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={muse}
+              className="absolute inset-x-0 truncate text-[12.5px] italic text-muted/80"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={fade}
+            >
+              try “{MUSES[muse]}”
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      <motion.div variants={listItem} className="relative grid w-full max-w-2xl gap-2 sm:grid-cols-3">
         {EXAMPLES.map((example) => (
-          <button
+          <motion.button
             key={example.title}
             type="button"
             onClick={() => applyExample(example.prompt)}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.98 }}
+            transition={spring.snap}
             className={cn(
               "group rounded-[var(--radius-card)] border border-border-soft bg-surface-2 px-3.5 py-3 text-left shadow-[var(--shadow-card)]",
-              "transition-[color,border-color,background-color,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-accent/50 hover:bg-surface-3",
+              "transition-[color,border-color,background-color] duration-fast hover:border-accent/50 hover:bg-surface-3",
               focusRing,
             )}
           >
@@ -72,10 +140,22 @@ function EmptyState() {
             <span className="mt-0.5 block truncate text-[11.5px] text-muted group-hover:text-fg-2">
               {example.prompt}
             </span>
-          </button>
+          </motion.button>
         ))}
-      </div>
-    </div>
+      </motion.div>
+
+      <motion.p variants={listItem} className="relative text-[11.5px] text-muted">
+        Press{" "}
+        <kbd className="rounded-[5px] border border-border-soft bg-surface-2 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[10.5px]">
+          ⌘K
+        </kbd>{" "}
+        for commands ·{" "}
+        <kbd className="rounded-[5px] border border-border-soft bg-surface-2 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[10.5px]">
+          ⌘↵
+        </kbd>{" "}
+        to generate
+      </motion.p>
+    </motion.div>
   );
 }
 
@@ -94,6 +174,8 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
   const patchSettings = useStore((s) => s.patchSettings);
   const restoreSettings = useStore((s) => s.restoreSettings);
   const deleteImage = useStore((s) => s.deleteImage);
+  const lightboxOpen = useStore((s) => s.focusedIndex !== null);
+  const reduced = usePrefersReducedMotion();
 
   const focusThis = () => setUI({ focusedIndex: Math.max(0, batch.findIndex((b) => b.id === img.id)) });
 
@@ -101,24 +183,43 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
     <div className="flex h-full flex-col">
       {/* stage with ambient backdrop */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={`bg-${img.id}`}
-          src={img.dataUrl}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl saturate-150"
-        />
+        {/* The backdrop crossfades on its own track — swapping it in the same frame as the stage
+            image made the whole panel flash when stepping through a batch. */}
+        <AnimatePresence>
+          <motion.img
+            key={`bg-${img.id}`}
+            src={img.dataUrl}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover blur-3xl saturate-150"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.25 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          />
+        </AnimatePresence>
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/40 via-transparent to-bg/70" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={img.id}
-          src={img.dataUrl}
-          alt=""
-          onClick={focusThis}
-          className="relative max-h-full max-w-full cursor-zoom-in rounded-[var(--radius-card)] object-contain shadow-[var(--shadow-pop)] ring-1 ring-white/10"
-          style={{ animation: "fadeIn var(--duration-base) var(--ease-out)" }}
-        />
+
+        {/* Deliberately NOT wrapped in AnimatePresence, and unmounted while the lightbox is open.
+            A layoutId identifies exactly one element at a time — if this stayed mounted (or lingered
+            through an exit animation) the lightbox's copy would be a second claimant to `img-<id>`
+            and the flight would collapse into a flicker. Unmounting hands the identity over cleanly,
+            so the picture travels from the stage into fullscreen and back. */}
+        {!lightboxOpen && (
+          <motion.img
+            key={img.id}
+            layoutId={`img-${img.id}`}
+            src={img.dataUrl}
+            alt=""
+            onClick={focusThis}
+            className="relative max-h-full max-w-full cursor-zoom-in rounded-[var(--radius-card)] object-contain shadow-[var(--shadow-pop)] ring-1 ring-white/10"
+            initial={{ opacity: 0, scale: 0.985 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={reduced ? fade : spring.fluid}
+            whileHover={reduced ? undefined : { scale: 1.006 }}
+          />
+        )}
+
         <IconButton
           variant="overlay"
           label="Open fullscreen preview"
@@ -147,7 +248,7 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
           {batch.map((b, i) => {
             const active = b.id === img.id;
             return (
-              <button
+              <motion.button
                 key={b.id}
                 id={`batch-opt-${b.id}`}
                 type="button"
@@ -156,20 +257,35 @@ function BatchView({ batch, selected }: { batch: GalleryImage[]; selected: Galle
                 aria-label={`Result ${i + 1} of ${batch.length}, seed ${b.seed}`}
                 tabIndex={active ? 0 : -1}
                 onClick={() => selectImage(b, true)}
+                whileHover={reduced ? undefined : { scale: 1.07, y: -2 }}
+                whileTap={{ scale: 0.96 }}
+                transition={spring.snap}
                 className={cn(
                   // Same radius as the stage image above it — both frame the same picture and are
                   // on screen together, so a 10px-vs-14px disagreement is actually visible.
-                  "size-14 shrink-0 cursor-pointer overflow-hidden rounded-[var(--radius-card)]",
-                  "transition-[opacity,transform,box-shadow] duration-fast ease-out",
+                  "relative size-14 shrink-0 cursor-pointer rounded-[var(--radius-card)]",
+                  "transition-opacity duration-fast",
                   focusRing,
-                  active
-                    ? "ring-2 ring-accent ring-offset-2 ring-offset-bg"
-                    : "opacity-55 hover:opacity-100 hover:scale-105",
+                  active ? "opacity-100" : "opacity-55 hover:opacity-100",
                 )}
               >
+                {/* The ring is one element that slides between thumbnails, so the selection reads as
+                    a single marker moving rather than two rings blinking in and out. */}
+                {active && (
+                  <motion.span
+                    layoutId="batch-marker"
+                    aria-hidden
+                    className="absolute -inset-[3px] rounded-[17px] ring-2 ring-accent"
+                    transition={reduced ? { duration: 0 } : spring.snap}
+                  />
+                )}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.dataUrl} alt="" className="h-full w-full object-cover" />
-              </button>
+                <img
+                  src={b.dataUrl}
+                  alt=""
+                  className="h-full w-full rounded-[var(--radius-card)] object-cover"
+                />
+              </motion.button>
             );
           })}
         </div>

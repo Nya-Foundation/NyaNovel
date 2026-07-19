@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "motion/react";
 import { Loader2, Sparkles, PanelLeftClose, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, type SettingsTab } from "@/lib/store";
+import { spring } from "@/lib/motion";
 import { DEFAULT_SETTINGS } from "@/lib/nai/types";
 import { modelLabel } from "@/lib/nai/models";
 import { Segmented } from "@/components/ui/segmented";
@@ -105,9 +107,19 @@ export function SettingsSidebar() {
       <div className="shrink-0 border-t border-border-soft bg-surface p-3 shadow-[0_-10px_28px_-20px_rgba(0,0,0,0.7)]">
         {isGenerating ? (
           <div className="flex items-center gap-2">
-            <div className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-button)] bg-surface-2 px-3.5">
-              <Loader2 className="motion-keep size-4 shrink-0 animate-spin text-accent" />
-              <span className="truncate text-[13.5px] font-semibold text-fg">
+            {/* The percentage was text-only. A determinate fill behind it turns the primary slot
+                into the progress indicator itself, so progress is readable peripherally without
+                parsing two numbers. */}
+            <div className="relative flex h-12 min-w-0 flex-1 items-center gap-2.5 overflow-hidden rounded-[var(--radius-button)] bg-surface-2 px-3.5">
+              <motion.span
+                aria-hidden
+                className="absolute inset-y-0 left-0 bg-accent/18"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.round(meanProgress * 100)}%` }}
+                transition={spring.soft}
+              />
+              <Loader2 className="motion-keep relative z-10 size-4 shrink-0 animate-spin text-accent" />
+              <span className="relative z-10 truncate text-[13.5px] font-semibold text-fg">
                 {abortRequested ? "Stopping…" : "Generating"}
                 <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[12.5px] tabular-nums text-muted">
                   {done}/{streaming?.length ?? nSamples} · {Math.round(meanProgress * 100)}%

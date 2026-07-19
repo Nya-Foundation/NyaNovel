@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { useStore, type StreamTile } from "@/lib/store";
+import { listContainer, listItem, spring } from "@/lib/motion";
 import { DEFAULT_CONNECTION } from "@/lib/nai/client";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { cn } from "@/lib/utils";
@@ -76,10 +78,25 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
         </span>
       </div>
 
-      <div className={cn("relative grid w-full max-w-4xl gap-2 sm:gap-4", gridCols(tiles.length))}>
+      <motion.div
+        className={cn("relative grid w-full max-w-4xl gap-2 sm:gap-4", gridCols(tiles.length))}
+        variants={listContainer}
+        initial="hidden"
+        animate="show"
+      >
         {tiles.map((t) => (
-          <div
+          <motion.div
             key={t.sampleIndex}
+            variants={listItem}
+            // A finished sample gets one brief accent ring — in a 9-up grid the blur settling is
+            // easy to miss, and this is the moment worth noticing. Animating `boxShadow` rather
+            // than a class swap keeps it from fighting the border already on the element.
+            animate={
+              t.status === "done"
+                ? { boxShadow: ["0 0 0 0px var(--accent)", "0 0 0 2px var(--accent)", "0 0 0 0px transparent"] }
+                : undefined
+            }
+            transition={t.status === "done" ? { duration: 0.7, ease: "easeOut" } : spring.smooth}
             // The real target aspect, not a hardcoded 3:4 — a landscape batch used to preview in
             // portrait boxes and then reflow the moment it committed.
             style={{ aspectRatio: `${width} / ${height}` }}
@@ -141,9 +158,9 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

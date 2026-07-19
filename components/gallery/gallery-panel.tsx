@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { Trash2, PanelRightClose, ImageOff, RotateCcw, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { listContainer } from "@/lib/motion";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -23,7 +25,10 @@ function groupByBatch(images: GalleryImage[]) {
     // in-memory batches are stored in reverse display order and previously showed the final sample
     // while opening/loading the first sample and its unrelated seed.
     const representative = batch.reduce((first, image) => image.batchIndex < first.batchIndex ? image : first);
-    return { ...representative, count: batch.length };
+    // `siblings` powers hover-scrub. Sorted by batchIndex so scrubbing walks the batch in the same
+    // order the filmstrip and the lightbox do, not in IndexedDB insertion order.
+    const siblings = [...batch].sort((a, b) => a.batchIndex - b.batchIndex);
+    return { ...representative, count: batch.length, siblings };
   });
 }
 
@@ -113,7 +118,17 @@ export function GalleryPanel() {
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
-          <div className="grid grid-cols-2 gap-2">
+          {/* CSS columns rather than a grid: tiles keep their true aspect ratio (see gallery-tile),
+              so a fixed-row grid would either crop every portrait or leave ragged gaps. Columns let
+              each tile take the height it wants and the wall packs itself. Reading order becomes
+              column-major, which is correct here — the list is a browsable history, not a sequence.
+              Tiles supply their own `mb-2`; `gap` does not apply to column layout. */}
+          <motion.div
+            className="columns-2 gap-2"
+            variants={listContainer}
+            initial="hidden"
+            animate="show"
+          >
             {groups.map((g) => (
               <GalleryTile
                 key={g.batchId}
@@ -124,7 +139,7 @@ export function GalleryPanel() {
                 onUseSeed={() => patchSettings({ seed: g.seed })}
               />
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
 
