@@ -7,9 +7,11 @@ import { SiteHeader } from "./site-header";
 import { ConnectModal } from "./connect-modal";
 import { SettingsSidebar } from "./sidebar/settings-sidebar";
 import { Canvas } from "./canvas/canvas";
+import { RecipeDropzone } from "./canvas/recipe-dropzone";
 import { Lightbox } from "./canvas/lightbox";
 import { DirectorModal } from "./canvas/director-modal";
 import { GalleryPanel } from "./gallery/gallery-panel";
+import { CommandPalette } from "./command-palette";
 import { IconButton } from "./ui/icon-button";
 import { ProgressRing } from "./ui/progress-ring";
 import { cn } from "@/lib/utils";
@@ -141,6 +143,9 @@ export function Studio() {
 
         <section className="relative z-0 min-w-0 flex-1 bg-bg" aria-busy={isGenerating}>
           <Canvas />
+          {/* Listens on window, draws here — a recipe PNG can be dropped anywhere in the studio,
+              but the invitation appears over the stage. */}
+          <RecipeDropzone />
         </section>
 
         <aside
@@ -193,6 +198,7 @@ export function Studio() {
       <ConnectModal />
       <DirectorModal />
       <Lightbox />
+      <CommandPalette />
     </div>
   );
 }

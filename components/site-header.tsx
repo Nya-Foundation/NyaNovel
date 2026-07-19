@@ -1,6 +1,6 @@
 "use client";
 
-import { Images, PanelLeftOpen, Sparkles, Square } from "lucide-react";
+import { Images, PanelLeftOpen, Search, Sparkles, Square } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { BrandLogo } from "./brand-logo";
 import { ThemeControls } from "./theme-controls";
@@ -37,6 +37,28 @@ export function SiteHeader() {
         <BrandLogo priority className="hidden h-8 w-[120px] sm:inline-flex" />
         <span className="mt-0.5 hidden text-[11px] text-muted lg:inline">part of latent.moe</span>
       </div>
+
+      {/* A hidden ⌘K is a shortcut only the people who already knew about it will find. This is the
+          discoverable surface for it; on narrow screens it degrades to the icon alone. */}
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("nya-command-palette"))}
+        aria-label="Open command palette"
+        aria-keyshortcuts="Meta+K Control+K"
+        title="Search commands — ⌘K"
+        className={cn(
+          "group ml-3 flex h-9 items-center gap-2 rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-2.5 text-muted",
+          "transition-[background-color,color,border-color] duration-instant hover:border-border hover:bg-surface-3 hover:text-fg-2 md:w-56 md:px-3",
+          focusRing,
+          "focus-visible:ring-offset-surface",
+        )}
+      >
+        <Search className="size-4 shrink-0" />
+        <span className="hidden flex-1 text-left text-[12.5px] md:inline">Search or jump to…</span>
+        <kbd className="hidden shrink-0 rounded-[5px] border border-border-soft bg-surface px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[10px] text-muted md:block">
+          ⌘K
+        </kbd>
+      </button>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
         <button

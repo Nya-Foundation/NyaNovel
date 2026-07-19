@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "motion/react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RotateCcw } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { spring, usePrefersReducedMotion } from "@/lib/motion";
 import { downloadDataUrl } from "@/lib/image-actions";
 import { useFocusTrap, useDelayedUnmount } from "@/lib/use-overlay";
 import { IconButton } from "@/components/ui/icon-button";
@@ -16,6 +18,7 @@ export function Lightbox() {
   const restoreSettings = useStore((s) => s.restoreSettings);
   const selectImage = useStore((s) => s.selectImage);
   const [zoom, setZoom] = useState(1);
+  const reduced = usePrefersReducedMotion();
 
   const open = focusedIndex !== null && !!batch && focusedIndex < batch.length;
   const mounted = useDelayedUnmount(open, 160);
@@ -62,8 +65,10 @@ export function Lightbox() {
       aria-modal="true"
       aria-label={`Image ${idx + 1} of ${batch.length}, seed ${img.seed}`}
       className={cn(
-        "fixed inset-0 z-50 flex flex-col bg-black/90 outline-none transition-[opacity,transform]",
-        open ? "opacity-100 scale-100 duration-base ease-out" : "opacity-0 scale-[0.98] duration-fast ease-in",
+        // Only the chrome fades; the image itself is layout-projected by motion, so this must not
+        // also scale the container or the two transforms would fight.
+        "fixed inset-0 z-50 flex flex-col bg-black/90 outline-none transition-opacity",
+        open ? "opacity-100 duration-base ease-out" : "opacity-0 duration-fast ease-in",
       )}
     >
       <div className="flex shrink-0 items-center justify-between px-4 py-3 text-white">
@@ -95,12 +100,17 @@ export function Lightbox() {
             <ChevronLeft />
           </IconButton>
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {/* Matches the stage image's identity in canvas.tsx, which unmounts while this is open —
+            so opening fullscreen reads as the same picture growing, not a new one appearing.
+            `scale` is animated as a motion value rather than a CSS transform so it composes with
+            the layout projection instead of overwriting it. */}
+        <motion.img
+          layoutId={open ? `img-${img.id}` : undefined}
           src={img.dataUrl}
           alt=""
-          style={{ transform: `scale(${zoom})` }}
-          className="max-h-full max-w-full object-contain transition-transform duration-base ease-out"
+          animate={{ scale: zoom }}
+          transition={reduced ? { duration: 0 } : spring.fluid}
+          className="max-h-full max-w-full object-contain"
         />
         {batch.length > 1 && (
           <IconButton variant="lightbox" size="lg" label="Next" disabled={idx === batch.length - 1} onClick={() => nav(1)} className="absolute right-3 top-1/2 -translate-y-1/2">

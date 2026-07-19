@@ -1,4 +1,8 @@
+"use client";
+
 import { useId } from "react";
+import { motion } from "motion/react";
+import { spring, usePrefersReducedMotion } from "@/lib/motion";
 import { focusRing } from "./input";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +26,7 @@ export function Segmented<T extends string>({
   "aria-label": ariaLabel,
 }: SegmentedProps<T>) {
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const reduced = usePrefersReducedMotion();
   const baseId = useId();
   const segId = (i: number) => `${baseId}-seg-${i}`;
 
@@ -49,14 +54,15 @@ export function Segmented<T extends string>({
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
     >
-      {/* The pill travels instead of blinking between segments. */}
-      <span
+      {/* The pill travels instead of blinking between segments. Spring rather than a CSS tween so
+          it settles with a little weight — the same `snap` used by the palette's active row and the
+          batch filmstrip marker, since all three are the same "selection moved" gesture. */}
+      <motion.span
         aria-hidden
-        className="absolute inset-y-1 rounded-[7px] bg-surface shadow-[var(--shadow-card)] ring-1 ring-[color-mix(in_oklab,var(--accent)_45%,transparent)] transition-[transform,width] duration-base ease-standard"
-        style={{
-          width: `calc((100% - 0.5rem) / ${options.length})`,
-          transform: `translateX(calc(${index} * 100%))`,
-        }}
+        className="absolute inset-y-1 rounded-[7px] bg-surface shadow-[var(--shadow-card)] ring-1 ring-[color-mix(in_oklab,var(--accent)_45%,transparent)]"
+        style={{ width: `calc((100% - 0.5rem) / ${options.length})` }}
+        animate={{ x: `${index * 100}%` }}
+        transition={reduced ? { duration: 0 } : spring.snap}
       />
       {options.map((opt, i) => {
         const active = opt.value === value;
