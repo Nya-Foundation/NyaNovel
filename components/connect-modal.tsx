@@ -11,6 +11,20 @@ import { Input, NumberInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/brand-logo";
 
+/**
+ * Hostname for display. The raw field is echoed back if it isn't a parseable URL — this renders on
+ * every keystroke while the user edits Host URL, and a bare `new URL()` would throw on the first
+ * incomplete one and take the whole dialog down with it.
+ */
+function hostLabel(raw: string): string {
+  const value = raw.trim() || DEFAULT_CONNECTION.host;
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
+}
+
 export function ConnectModal() {
   const show = useStore((s) => s.showConnect);
   const connected = useStore((s) => Boolean(s.client));
@@ -25,6 +39,34 @@ export function ConnectModal() {
   const [advanced, setAdvanced] = useState(false);
   const [rejected, setRejected] = useState(false);
   const verifying = useStore((s) => s.connectionStatus === "verifying");
+
+  /**
+   * Re-seed the form every time the dialog opens.
+   *
+   * This component is mounted for the life of the app (Studio renders it unconditionally and Modal
+   * handles visibility), so the useState initialisers above run exactly once — during the first
+   * render, while `init()` has not yet restored the saved connection and `existing` is still null.
+   * They captured an empty token and the default host and never re-ran, so a returning user opened
+   * a blank form and reasonably concluded their key had been lost. It never was: it was in
+   * localStorage and on the live client the whole time.
+   *
+   * Derived during render rather than in an effect, matching useDelayedUnmount — an effect would
+   * paint one frame of stale fields before correcting them.
+   */
+  const [prevShow, setPrevShow] = useState(show);
+  if (show !== prevShow) {
+    setPrevShow(show);
+    if (show) {
+      setToken(existing?.token ?? "");
+      setHost(existing?.host ?? DEFAULT_CONNECTION.host);
+      setMaxRetries(existing?.maxRetries ?? DEFAULT_CONNECTION.maxRetries);
+      setBaseDelay(existing?.baseDelay ?? DEFAULT_CONNECTION.baseDelay);
+      setRejected(false);
+      // Expand Advanced when the saved host isn't the default, so a configured proxy is visible
+      // instead of hidden behind a collapsed toggle that looks like it holds nothing.
+      setAdvanced(Boolean(existing) && existing?.host !== DEFAULT_CONNECTION.host);
+    }
+  }
 
   // Direct-to-NovelAI vs. a proxied host changes both the copy and where credentials travel.
   const isDirect = (host.trim() || DEFAULT_CONNECTION.host) === DEFAULT_CONNECTION.host;
@@ -62,13 +104,22 @@ export function ConnectModal() {
       <div className="mb-5 flex flex-col items-center text-center">
         <BrandLogo variant="mark" className="mb-3 size-14" />
         <h2 className="font-[family-name:var(--font-display)] text-[21px] font-bold tracking-[-0.02em] text-fg">
-          Welcome to NyaNovel
+          {connected ? "Connection settings" : "Welcome to NyaNovel"}
         </h2>
         {/* The destination is user-configurable, so the privacy claim has to follow it. Saying
             "straight to NovelAI" while Host URL points at a proxy would be a false statement about
-            where the key and every prompt actually go. */}
+            where the key and every prompt actually go.
+
+            Returning users get different copy entirely: telling someone who is already connected to
+            "paste your token to start" implies the saved one is gone and invites them to hunt down
+            a credential they don't need. */}
         <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">
-          {isDirect ? (
+          {connected ? (
+            <>
+              Your {isDirect ? "token" : "access key"} is saved in this browser and already in use.
+              Edit it below only if you want to change it.
+            </>
+          ) : isDirect ? (
             <>
               Paste your NovelAI token to start. It&apos;s stored only in this browser and sent straight
               to NovelAI — never to us.
@@ -80,6 +131,15 @@ export function ConnectModal() {
             </>
           )}
         </p>
+
+        {connected && (
+          <span className="mt-3 flex max-w-full items-center gap-2 rounded-[var(--radius-pill)] border border-border-soft bg-surface-2 px-2.5 py-1 text-[11.5px] text-fg-2">
+            <span className="size-2 shrink-0 rounded-full bg-ok" style={{ boxShadow: "0 0 8px var(--ok)" }} />
+            <span className="truncate font-[family-name:var(--font-mono)]">
+              {isDirect ? "NovelAI" : hostLabel(host)}
+            </span>
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-4">
         <div>
