@@ -5,10 +5,11 @@ import {
   Host,
   type Image,
   type ImageInput,
-  type MsgpackEvent,
+  MsgpackEvent,
   type EmotionOptions,
 } from "nekoai-js";
 import { DEFAULT_SETTINGS, type GenerationSettings, toMetadata } from "./types";
+import { isV4Model } from "./models";
 
 // ---- Connection config (persisted in localStorage; the token never leaves the browser) ----
 
@@ -159,8 +160,23 @@ const randomSeed = () => Math.floor(Math.random() * MAX_SEED);
 export type GenerateHandle = {
   /** The concrete seed used (a random one is drawn when settings.seed is -1). */
   seed: number;
+  /** V4/V4.5 stream intermediate frames; V3 resolves once with final images. */
+  streaming: boolean;
   events: AsyncGenerator<MsgpackEvent, void, unknown>;
 };
+
+async function* finalImageEvents(images: Image[], steps: number) {
+  for (const [sampleIndex, image] of images.entries()) {
+    yield new MsgpackEvent({
+      event_type: EventType.FINAL,
+      samp_ix: sampleIndex,
+      step_ix: steps,
+      gen_id: "non-streaming",
+      sigma: 0,
+      image,
+    });
+  }
+}
 
 export class NaiClient {
   readonly raw: NovelAI;
@@ -183,8 +199,17 @@ export class NaiClient {
   async generate(settings: GenerationSettings): Promise<GenerateHandle> {
     const seed = settings.seed >= 0 ? settings.seed : randomSeed();
     const meta = toMetadata(settings, seed);
-    const events = await this.raw.generateImage(meta, true);
-    return { seed, events };
+    const streaming = isV4Model(settings.model);
+    if (streaming) {
+      const events = await this.raw.generateImage(meta, true);
+      return { seed, streaming, events };
+    }
+
+    // NovelAI's V3 endpoints return a ZIP containing only final images. Adapt that array to the
+    // same event contract used by the store so persistence, batches, and per-sample seeds stay on
+    // one path without pretending that V3 supports intermediate previews.
+    const images = await this.raw.generateImage(meta, false);
+    return { seed, streaming, events: finalImageEvents(images, settings.steps) };
   }
 
   suggestTags(prompt: string) {

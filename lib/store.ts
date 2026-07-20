@@ -16,6 +16,7 @@ import {
   type ConnectionConfig,
 } from "@/lib/nai/client";
 import { DEFAULT_SETTINGS, type GenerationSettings, type ReferenceImage, type CharacterSetting } from "@/lib/nai/types";
+import { isV4Model } from "@/lib/nai/models";
 import type { EmotionOptions, Image } from "nekoai-js";
 import {
   loadImages,
@@ -95,6 +96,8 @@ type Store = {
   /** Last failure, kept so the canvas can explain it after the toast fades. */
   lastError: { message: string; at: number } | null;
   abortRequested: boolean;
+  /** False for V3, whose final-only request cannot be interrupted through nekoai-js. */
+  canCancelGeneration: boolean;
   /** Wall-clock start of the current run, so waits can show elapsed time instead of a frozen ring. */
   runStartedAt: number | null;
   generate: () => Promise<void>;
@@ -339,9 +342,16 @@ export const useStore = create<Store>()((set, get) => ({
   streamingBatch: null,
   lastError: null,
   abortRequested: false,
+  canCancelGeneration: false,
   runStartedAt: null,
   cancelGenerate: () => {
-    if (get().isGenerating) set({ abortRequested: true });
+    const { isGenerating, canCancelGeneration } = get();
+    if (!isGenerating) return;
+    if (!canCancelGeneration) {
+      toast.info("V3 generations return only a final image and can't be stopped once submitted.");
+      return;
+    }
+    set({ abortRequested: true });
   },
   clearError: () => set({ lastError: null }),
   generate: async () => {
@@ -361,6 +371,7 @@ export const useStore = create<Store>()((set, get) => ({
       return;
     }
     const n = Math.max(1, settings.nSamples);
+    const canCancelGeneration = isV4Model(settings.model);
     const compactLayout = typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches;
     // Deliberately does NOT clear selectedBatch/selectedImage: the success path below overwrites
     // them anyway, and keeping them means a failed run leaves the user's previous image intact
@@ -369,6 +380,7 @@ export const useStore = create<Store>()((set, get) => ({
       isGenerating: true,
       lastError: null,
       abortRequested: false,
+      canCancelGeneration,
       runStartedAt: Date.now(),
       // On compact layouts the composer is a drawer over the canvas. Committing the prompt should
       // reveal streaming immediately; the persistent desktop composer stays exactly where it is.
@@ -420,13 +432,13 @@ export const useStore = create<Store>()((set, get) => ({
     };
 
     try {
-      const { seed, events } = await client.generate(settings);
+      const { seed, streaming, events } = await client.generate(settings);
       baseSeed = seed;
 
       for await (const ev of events) {
         // Breaking calls the iterator's .return(), which closes the stream reader. nekoai-js's own
         // AbortControllers are internal and timeout-only, so this is the available cancel path.
-        if (get().abortRequested) break;
+        if (streaming && get().abortRequested) break;
         if (ev.event_type === EventType.INTERMEDIATE) {
           set((s) => ({
             streamingBatch:
@@ -487,7 +499,13 @@ export const useStore = create<Store>()((set, get) => ({
         toast.error(`Generation failed: ${message}`);
       }
     } finally {
-      set({ isGenerating: false, streamingBatch: null, abortRequested: false, runStartedAt: null });
+      set({
+        isGenerating: false,
+        streamingBatch: null,
+        abortRequested: false,
+        canCancelGeneration: false,
+        runStartedAt: null,
+      });
     }
   },
 

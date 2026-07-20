@@ -22,6 +22,7 @@ export function SettingsSidebar() {
   const cancelGenerate = useStore((s) => s.cancelGenerate);
   const isGenerating = useStore((s) => s.isGenerating);
   const abortRequested = useStore((s) => s.abortRequested);
+  const canCancelGeneration = useStore((s) => s.canCancelGeneration);
   const streaming = useStore((s) => s.streamingBatch);
   const nSamples = useStore((s) => s.settings.nSamples);
   const characterCount = useStore((s) => s.settings.characters.filter((c) => c.enabled).length);
@@ -111,31 +112,37 @@ export function SettingsSidebar() {
                 into the progress indicator itself, so progress is readable peripherally without
                 parsing two numbers. */}
             <div className="relative flex h-12 min-w-0 flex-1 items-center gap-2.5 overflow-hidden rounded-[var(--radius-button)] bg-surface-2 px-3.5">
-              <motion.span
-                aria-hidden
-                className="absolute inset-y-0 left-0 bg-accent/18"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.round(meanProgress * 100)}%` }}
-                transition={spring.soft}
-              />
+              {canCancelGeneration && (
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 bg-accent/18"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round(meanProgress * 100)}%` }}
+                  transition={spring.soft}
+                />
+              )}
               <Loader2 className="motion-keep relative z-10 size-4 shrink-0 animate-spin text-accent" />
               <span className="relative z-10 truncate text-[13.5px] font-semibold text-fg">
-                {abortRequested ? "Stopping…" : "Generating"}
+                {abortRequested ? "Stopping…" : canCancelGeneration ? "Generating" : "Generating with V3"}
                 <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[12.5px] tabular-nums text-muted">
-                  {done}/{streaming?.length ?? nSamples} · {Math.round(meanProgress * 100)}%
+                  {canCancelGeneration
+                    ? `${done}/${streaming?.length ?? nSamples} · ${Math.round(meanProgress * 100)}%`
+                    : "final image only"}
                 </span>
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-12 shrink-0 px-4"
-              disabled={abortRequested}
-              onClick={cancelGenerate}
-              title="Stop — finished images are kept"
-            >
-              <Square className="size-4" /> Stop
-            </Button>
+            {canCancelGeneration && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-12 shrink-0 px-4"
+                disabled={abortRequested}
+                onClick={cancelGenerate}
+                title="Stop — finished images are kept"
+              >
+                <Square className="size-4" /> Stop
+              </Button>
+            )}
           </div>
         ) : (
           <Button

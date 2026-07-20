@@ -38,6 +38,7 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
   const width = useStore((s) => s.settings.width);
   const height = useStore((s) => s.settings.height);
   const elapsed = useElapsed(startedAt);
+  const livePreview = useStore((s) => s.canCancelGeneration);
   // Don't attribute a stall to NovelAI when the user pointed the client at their own proxy.
   const isDirect = useStore((s) => (s.connection?.host ?? DEFAULT_CONNECTION.host) === DEFAULT_CONNECTION.host);
 
@@ -49,7 +50,7 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
   const done = tiles.filter((t) => t.status === "done").length;
   const mean = tiles.length ? tiles.reduce((a, t) => a + t.progress, 0) / tiles.length : 0;
   // Retries on 429/5xx use a 2s base delay, so "queued" can legitimately last tens of seconds.
-  const stalled = tiles.every((t) => t.status === "initializing") && elapsed > 15000;
+  const stalled = livePreview && tiles.every((t) => t.status === "initializing") && elapsed > 15000;
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-auto p-3 sm:p-6">
@@ -67,14 +68,17 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
 
       <div className="relative mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[12.5px]">
         <span className="font-semibold text-fg">
-          {stalled
-            ? `Still waiting — ${isDirect ? "NovelAI" : "the host"} may be busy`
-            : done === tiles.length
-              ? "Finishing up"
-              : "Generating"}
+          {!livePreview
+            ? "Generating with V3 — preview arrives when complete"
+            : stalled
+              ? `Still waiting — ${isDirect ? "NovelAI" : "the host"} may be busy`
+              : done === tiles.length
+                ? "Finishing up"
+                : "Generating"}
         </span>
         <span className="font-[family-name:var(--font-mono)] text-[12px] tabular-nums text-muted">
-          {done}/{tiles.length} · {Math.round(mean * 100)}% · {mmss(elapsed)}
+          {livePreview ? `${done}/${tiles.length} · ${Math.round(mean * 100)}% · ` : `${tiles.length} final · `}
+          {mmss(elapsed)}
         </span>
       </div>
 
@@ -149,7 +153,9 @@ export function StreamingGrid({ tiles, backdrop }: { tiles: StreamTile[]; backdr
                       className="motion-keep size-[26px] rounded-full border-2 border-white/25 border-t-accent"
                       style={{ animation: "spin 0.9s linear infinite" }}
                     />
-                    <span className="font-[family-name:var(--font-mono)] text-[11px] text-white/80">Queued</span>
+                    <span className="font-[family-name:var(--font-mono)] text-[11px] text-white/80">
+                      {livePreview ? "Queued" : "Waiting for final"}
+                    </span>
                   </>
                 ) : (
                   <ProgressRing progress={t.progress} size={52}>
