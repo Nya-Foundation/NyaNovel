@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { PanelLeftOpen, Images, Sparkles } from "lucide-react";
+import { Loader2, PanelLeftOpen, Images, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { SiteHeader } from "./site-header";
 import { ConnectModal } from "./connect-modal";
@@ -25,6 +25,7 @@ export function Studio() {
   const setUI = useStore((s) => s.setUI);
   const generate = useStore((s) => s.generate);
   const isGenerating = useStore((s) => s.isGenerating);
+  const canCancelGeneration = useStore((s) => s.canCancelGeneration);
   const streaming = useStore((s) => s.streamingBatch);
   const prompt = useStore((s) => s.settings.prompt);
   const nSamples = useStore((s) => s.settings.nSamples);
@@ -116,7 +117,13 @@ export function Studio() {
               <PanelLeftOpen />
             </IconButton>
             {isGenerating ? (
-              <ProgressRing progress={meanProgress} size={32} stroke={2.5} />
+              canCancelGeneration ? (
+                <ProgressRing progress={meanProgress} size={32} stroke={2.5} />
+              ) : (
+                <span className="flex size-8 items-center justify-center text-accent" title="Generating final V3 image">
+                  <Loader2 className="motion-keep size-4 animate-spin" />
+                </span>
+              )
             ) : (
               <IconButton
                 label="Generate"
@@ -192,7 +199,11 @@ export function Studio() {
 
       {/* Progress is otherwise silent for screen-reader users for the whole run. */}
       <div role="status" aria-live="polite" aria-atomic className="sr-only">
-        {isGenerating ? `Generating ${streaming?.length ?? 0} images, ${Math.round(meanProgress * 100)} percent` : ""}
+        {isGenerating
+          ? canCancelGeneration
+            ? `Generating ${streaming?.length ?? 0} images, ${Math.round(meanProgress * 100)} percent`
+            : `Generating ${streaming?.length ?? 0} V3 final images`
+          : ""}
       </div>
 
       <ConnectModal />

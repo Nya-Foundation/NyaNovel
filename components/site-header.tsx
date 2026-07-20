@@ -1,6 +1,6 @@
 "use client";
 
-import { Images, PanelLeftOpen, Search, Sparkles, Square } from "lucide-react";
+import { Images, Loader2, PanelLeftOpen, Search, Sparkles, Square } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { BrandLogo } from "./brand-logo";
 import { ThemeControls } from "./theme-controls";
@@ -15,6 +15,7 @@ export function SiteHeader() {
   const generate = useStore((s) => s.generate);
   const cancelGenerate = useStore((s) => s.cancelGenerate);
   const abortRequested = useStore((s) => s.abortRequested);
+  const canCancelGeneration = useStore((s) => s.canCancelGeneration);
   const setUI = useStore((s) => s.setUI);
   const connected = status === "ok";
 
@@ -64,10 +65,14 @@ export function SiteHeader() {
         <button
           type="button"
           onClick={() => isGenerating ? cancelGenerate() : void generate()}
-          disabled={abortRequested}
-          aria-label={isGenerating ? "Stop generation" : "Generate"}
+          disabled={abortRequested || (isGenerating && !canCancelGeneration)}
+          aria-label={isGenerating ? (canCancelGeneration ? "Stop generation" : "Generation in progress") : "Generate"}
           aria-keyshortcuts="Meta+Enter Control+Enter"
-          title={isGenerating ? "Stop — finished images are kept" : "Generate — ⌘↵"}
+          title={isGenerating
+            ? canCancelGeneration
+              ? "Stop — finished images are kept"
+              : "V3 returns the final image when generation completes"
+            : "Generate — ⌘↵"}
           className={cn(
             "inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] bg-accent px-2.5 text-[12.5px] font-bold text-on-accent shadow-[var(--glow-accent)]",
             "transition-[filter,transform] duration-fast ease-out hover:brightness-[1.07] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-70 xl:hidden",
@@ -75,8 +80,14 @@ export function SiteHeader() {
             "focus-visible:ring-offset-surface",
           )}
         >
-          {isGenerating ? <Square className="size-3.5" /> : <Sparkles className="size-4" />}
-          <span className="hidden sm:inline">{abortRequested ? "Stopping" : isGenerating ? "Stop" : "Generate"}</span>
+          {isGenerating
+            ? canCancelGeneration
+              ? <Square className="size-3.5" />
+              : <Loader2 className="motion-keep size-4 animate-spin" />
+            : <Sparkles className="size-4" />}
+          <span className="hidden sm:inline">
+            {abortRequested ? "Stopping" : isGenerating ? (canCancelGeneration ? "Stop" : "Working") : "Generate"}
+          </span>
         </button>
         <button
           type="button"
